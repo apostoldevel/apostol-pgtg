@@ -46,19 +46,73 @@ This was made possible thanks to the [Apostol](https://github.com/apostoldevel/a
       ~~~
     </details> 
 
-1. Build and install **pgTG**.
+3. Build and install **pgTG**.
+4. Connect to the database `pgtg`:
+   ~~~shell
+   sudo -u postgres psql -d pgtg -U http
+   ~~~
+5. Register your bot:
+   ~~~postgresql
+   SELECT tg.add_bot('00000000-0000-4000-8000-000000000001', 'API_TOKEN', 'USERNAME_bot', 'Bot Name', null, 'en');
+   ~~~
+6. Create a message handler function in the `tg` schema. It must match the name of your bot when registering it in step #5 in the example it is `USERNAME_bot`.
+
+**WARNING**: Replace `USERNAME_bot` with your bot's real name everywhere.
+
+#### Handler function example:
+<details>
+  <summary>tg.USERNAME_bot</summary>
+
+~~~postgresql
+CREATE OR REPLACE FUNCTION tg.USERNAME_bot (
+  bot_id    uuid,
+  body      jsonb
+) RETURNS   bool
+AS $$
+DECLARE
+  b         record;
+  r         record;
+  m         record;
+  c         record;
+  f         record;
+
+  message   text;
+BEGIN
+  SELECT * INTO b FROM tg.bot WHERE id = bot_id;
+
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+
+  SELECT * INTO r FROM jsonb_to_record(body) AS x(message jsonb, update_id double precision);
+  SELECT * INTO m FROM jsonb_to_record(r.message) AS x(chat jsonb, date double precision, "from" jsonb, text text, entities jsonb, update_id double precision);
+  SELECT * INTO c FROM jsonb_to_record(m.chat) AS x(id int, type text, username text, last_name text, first_name text);
+  SELECT * INTO f FROM jsonb_to_record(m."from") AS x(id int, is_bot bool, username text, last_name text, first_name text, language_code text);
+
+  CASE m.text
+  WHEN '/start' THEN
+    message := format('Hello! My name is %s.', b.full_name);
+  WHEN '/help' THEN
+    message := 'Unfortunately, I can''t help you yet.';
+  WHEN '/settings' THEN
+    message := 'Not applicable.';
+  ELSE
+    message := 'Unknown command.';
+  END CASE;
+
+  PERFORM tg.send_message(bot_id, c.id, message);
+
+  RETURN true;
+END
+$$ LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = tg, pg_temp;
+~~~
+</details> 
 
 As a result, all messages addressed to your telegram bot through `nginx` will be redirected to `pgtg` and transferred to PostgreSQL for processing.
 
-All you have to do is to implement the message handler in the `pgtg` database inside the `tg.webhook` function.
-
-<details>
-  <summary>Implementation example</summary>
-
-  ~~~postgresql
-
-  ~~~
-</details> 
+**All you have to do is to implement a function in the `pgtg` database to process messages coming from telegrams.**
 
 Building and installation
 -
@@ -73,7 +127,7 @@ Building and installation
 ### Linux (Debian/Ubuntu)
 
 To install a C++ compiler and a valid library on Ubuntu:
-~~~
+~~~shell
 sudo apt-get install build-essential libssl-dev libcurl4-openssl-dev make cmake gcc g++
 ~~~
 
@@ -87,7 +141,7 @@ To install the database you need to run:
 
 1. Write the name of the database in the db/sql/sets.conf file (default: pgtg)
 1. Set passwords for Postgres users [libpq-pgpass](https://postgrespro.ru/docs/postgrespro/14/libpq-pgpass):
-   ~~~
+   ~~~shell
    sudo -iu postgres -H vim .pgpass
    ~~~
    ~~~
@@ -99,11 +153,11 @@ To install the database you need to run:
    local	pgtg		http					md5
    ~~~
 1. Apply settings:
-   ~~~
+   ~~~shell
    sudo pg_ctlcluster 14 main reload
    ~~~   
 1. Run:
-   ~~~
+   ~~~shell
    cd db/
    ./runme.sh --make
    ~~~
@@ -111,18 +165,18 @@ To install the database you need to run:
 ###### The `--make` option is required to install the database for the first time. Further, the installation script can be run either without parameters or with the `--install` parameter.
 
 To install **pgTG** using Git, run:
-~~~
+~~~shell
 git clone https://github.com/apostoldevel/apostol-pgtg.git
 ~~~
 
 ### Building:
-~~~
+~~~shell
 cd apostol-pgtg
 ./configure
 ~~~
 
 ### Compilation and installation:
-~~~
+~~~shell
 cd cmake-build-release
 make
 sudo make install
@@ -145,12 +199,12 @@ Run
 To manage **`pgtg`**, use standard service management commands.
 
 To run `pgtg` run:
-~~~
+~~~shell
 sudo systemctl start pgtg
 ~~~
 
 To check the status, run:
-~~~
+~~~shell
 sudo systemctl status pgtg
 ~~~
 
@@ -177,25 +231,25 @@ You can build the image yourself or get it ready-made from the docker hub:
 
 ### Collect
 
-~~~
+~~~shell
 docker build -t pgtg .
 ~~~
 
 ### Get
 
-~~~
+~~~shell
 docker pull apostoldevel/pgtg
 ~~~
 
 ### Run
 
 If assembled by yourself:
-~~~
+~~~shell
 docker run -d -p 4980:4980 --rm --name pgtg pgtg
 ~~~
 
 If you received a finished image:
-~~~
+~~~shell
 docker run -d -p 4980:4980 --rm --name pgtg apostoldevel/pgtg
 ~~~
 

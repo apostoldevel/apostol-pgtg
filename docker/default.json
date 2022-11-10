@@ -1,0 +1,4 @@
+{
+  "hosts": ["localhost:4980"],
+  "root": "/opt/pgtg/www"
+}

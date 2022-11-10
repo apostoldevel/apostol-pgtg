@@ -1,0 +1,6 @@
+\echo [M] install.psql
+\ir sets.conf
+\ir db.sql
+\connect :dbname :username
+\ir create.psql
+\q

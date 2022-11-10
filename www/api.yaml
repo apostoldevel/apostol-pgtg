@@ -1,0 +1,212 @@
+openapi: 3.0.0
+info:
+  description: >
+    Telegram bot in Postgres.
+  version: "1.0.0"
+  title: >
+    pgTG
+  contact:
+    email: apostoldevel@gmail.com
+  license:
+    name: MIT License
+    url: https://github.com/apostoldevel/apostol-pgtg/blob/master/LICENSE
+externalDocs:
+  description: GitHub
+  url: https://github.com/apostoldevel/apostol-pgtg
+servers:
+  - url: 'http://{host}:{port}/api/v1'
+    description: Custom
+    variables:
+      host:
+        default: localhost
+      port:
+        default: '4980'
+tags:
+  - name: GET
+    description: >
+      Handling HTTP GET request in PostgreSQL database (call `http.get`).
+  - name: POST
+    description: >
+      Handling HTTP POST request in PostgreSQL database (call `http.post`).
+paths:
+  /ping:
+    get:
+      tags:
+        - GET
+      summary: Connection test.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - POST
+      summary: Connection test.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/InternalError'
+  /time:
+    get:
+      tags:
+        - GET
+      summary: Server Time.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serverTime:
+                    type: integer
+                    description: UNIX time
+                example:
+                  serverTime: 1642521843938
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - POST
+      summary: Server Time.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serverTime:
+                    type: integer
+                    description: UNIX time
+                example:
+                  serverTime: 1642521843938
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/InternalError'
+  /webhook/{id}:
+    post:
+      tags:
+        - POST
+      summary: Telegram Webhook endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: Bot ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+          default: 00000000-0000-4000-8000-000000000001
+        - $ref: '#/components/parameters/resultObject'
+        - $ref: '#/components/parameters/resultFormat'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/headers'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/InternalError'
+components:
+  parameters:
+    resultObject:
+      in: query
+      name: result_object
+      required: false
+      schema:
+        type: string
+        enum: [true, false]
+      description: Wrap the result in a JSON-object named "result".
+    resultFormat:
+      in: query
+      name: result_format
+      required: false
+      schema:
+        type: string
+        enum: [object, array, null]
+      description: >
+        All endpoints are returned: JSON-object or JSON-array depending on the number of entries in the response. 
+        You can change this behavior with this setting.
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error'
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error'
+    InternalError:
+      description: Internal error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error'
+  schemas:
+    headers:
+      type: object
+    params:
+      type: object
+    body:
+      type: object
+    error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+              format: int32
+            message:
+              type: string
