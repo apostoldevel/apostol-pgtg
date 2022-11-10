@@ -1,5 +1,5 @@
 [Unit]
-Description=Apostol Telegram Bot
+Description=Telegram bot in Postgres
 After=network.target remote-fs.target nss-lookup.target
 
 [Service]

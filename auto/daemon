@@ -5,7 +5,7 @@
 # Required-Stop:     $local_fs $remote_fs $network $syslog $named
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: starts the Apostol Telegram Bot
+# Short-Description: starts the Telegram bot in Postgres
 # Description:       starts pgtg using start-stop-daemon
 ### END INIT INFO
 
@@ -13,7 +13,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 DAEMON=/usr/sbin/pgtg
 #DAEMOD_OPTS="-p /etc/pgtg -c /etc/pgtg/pgtg.conf"
 NAME=pgtg
-DESC="Apostol Telegram Bot"
+DESC="Telegram bot in Postgres"
 
 # Include pgtg defaults if available
 if [ -r /etc/default/pgtg ]; then
