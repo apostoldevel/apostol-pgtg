@@ -52,11 +52,13 @@ As a result, all messages addressed to your telegram bot through `nginx` will be
 
 All you have to do is to implement the message handler in the `pgtg` database inside the `tg.webhook` function.
 
-Implementation example:
+<details>
+  <summary>Implementation example</summary>
 
-~~~postgresql
+  ~~~postgresql
 
-~~~
+  ~~~
+</details> 
 
 Building and installation
 -
@@ -189,12 +191,12 @@ docker pull apostoldevel/pgtg
 
 If assembled by yourself:
 ~~~
-docker run -d -p 8080:8080 --rm --name pgtg pgtg
+docker run -d -p 4980:4980 --rm --name pgtg pgtg
 ~~~
 
 If you received a finished image:
 ~~~
-docker run -d -p 8080:8080 --rm --name pgtg apostoldevel/pgtg
+docker run -d -p 4980:4980 --rm --name pgtg apostoldevel/pgtg
 ~~~
 
 Swagger UI will be available at http://localhost:4980 or http://host-ip:4980 in your browser.
