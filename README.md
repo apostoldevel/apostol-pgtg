@@ -7,12 +7,19 @@ How is it possible?
 
 This was made possible thanks to the [Apostol](https://github.com/apostoldevel/apostol) project and the [PGFetch](https://github.com/apostoldevel/module-PGFetch) (Postgres Fetch) module.
 
+How it works?
+-
+
+All messages addressed to your telegram bot through [WebHook](https://core.telegram.org/bots/api#setwebhook) will be redirected to `pgtg` and passed to PostgreSQL for processing.
+
+All you need to do is to implement a handler function to process messages coming from telegrams, as described below.
+
 **Sequencing**
 -
 
 1. Set the [WebHook](https://core.telegram.org/bots/api#setwebhook) in your Telegram bot settings:
    * [Setting your Telegram Bot WebHook the easy way](https://xabaras.medium.com/setting-your-telegram-bot-webhook-the-easy-way-c7577b2d6f72)
-     * Format URL:
+     * URL format:
        ~~~
        https://you.domain.org/api/v1/webhook/00000000-0000-4000-8000-000000000001
        ~~~
@@ -53,18 +60,21 @@ This was made possible thanks to the [Apostol](https://github.com/apostoldevel/a
    ~~~
 5. Register your bot:
    ~~~postgresql
-   SELECT tg.add_bot('00000000-0000-4000-8000-000000000001', 'API_TOKEN', 'USERNAME_bot', 'Bot Name', null, 'en');
+   SELECT bot.add('00000000-0000-4000-8000-000000000001', '<API_TOKEN>', '<HANDLER_FUNCTION>', '<BOT_NAME>', null, 'en');
    ~~~
-6. Create a message handler function in the `tg` schema. It must match the name of your bot when registering it in step #5 in the example it is `USERNAME_bot`.
+   * `API_TOKEN` - Telegram bot API Token.
+   * `HANDLER_FUNCTION` - A handler function written in the PL/pgSQL programming language and located in the `bot` schema. For example `example_bot`.
+   * `BOT_NAME` - Telegram bot name.
 
-**WARNING**: Replace `USERNAME_bot` with your bot's real name everywhere.
 
-#### Handler function example:
+6. Create a message handler function in the `bot` schema that you specified in the `HANDLER_FUNCTION` parameter when registering the bot. It can match the name of your bot.
+
+### Handler function example:
 <details>
-  <summary>tg.USERNAME_bot</summary>
+  <summary>bot.example_bot</summary>
 
 ~~~postgresql
-CREATE OR REPLACE FUNCTION tg.USERNAME_bot (
+CREATE OR REPLACE FUNCTION bot.example_bot (
   bot_id    uuid,
   body      jsonb
 ) RETURNS   bool
@@ -78,7 +88,7 @@ DECLARE
 
   message   text;
 BEGIN
-  SELECT * INTO b FROM tg.bot WHERE id = bot_id;
+  SELECT * INTO b FROM bot.list WHERE id = bot_id;
 
   IF NOT FOUND THEN
     RETURN false;
@@ -106,13 +116,9 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = tg, pg_temp;
+  SET search_path = bot, pg_temp;
 ~~~
 </details> 
-
-As a result, all messages addressed to your telegram bot through `nginx` will be redirected to `pgtg` and transferred to PostgreSQL for processing.
-
-**All you have to do is to implement a function in the `pgtg` database to process messages coming from telegrams.**
 
 Building and installation
 -

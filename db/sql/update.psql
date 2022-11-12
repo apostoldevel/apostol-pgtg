@@ -3,4 +3,5 @@
 \connect :dbname :username
 \ir './http/update.psql'
 \ir './tg/update.psql'
+\ir './bot/update.psql'
 \q

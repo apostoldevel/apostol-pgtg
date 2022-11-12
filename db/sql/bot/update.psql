@@ -1,0 +1,4 @@
+\ir view.sql
+\ir routine.sql
+
+\ir './example_bot/update.psql'
