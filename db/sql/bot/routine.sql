@@ -63,6 +63,25 @@ $$ LANGUAGE plpgsql
   SET search_path = bot, pg_temp;
 
 --------------------------------------------------------------------------------
+-- TELEGRAM BOT HEARTBEAT ------------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION bot.heartbeat (
+) RETURNS   void
+AS $$
+DECLARE
+  r         record;
+BEGIN
+  FOR r IN SELECT id FROM bot.list
+  LOOP
+
+  END LOOP;
+END
+$$ LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = bot, pg_temp;
+
+--------------------------------------------------------------------------------
 -- FUNCTION bot.add ------------------------------------------------------------
 --------------------------------------------------------------------------------
 

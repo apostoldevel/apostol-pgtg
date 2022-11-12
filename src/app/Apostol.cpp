@@ -185,6 +185,14 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
+        void CApostol::CreateCustomProcesses() {
+            if (Config()->IniFile().ReadBool("process/TGBot", "enable", true)) {
+                AddProcess<CTGBot>();
+                m_ProcessType = ptCustom;
+            }
+        }
+        //--------------------------------------------------------------------------------------------------------------
+
         void CApostol::StartProcess() {
             if (Config()->Helper()) {
                 m_ProcessType = ptHelper;

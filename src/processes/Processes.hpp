@@ -25,8 +25,13 @@ Author:
 #define APOSTOL_PROCESSES_HPP
 //----------------------------------------------------------------------------------------------------------------------
 
-static inline void CreateProcesses(CCustomProcess *AParent, CApplication *AApplication) {
+#include "Header.hpp"
+//----------------------------------------------------------------------------------------------------------------------
 
+#include "TGBot/TGBot.hpp"
+
+static inline void CreateProcesses(CCustomProcess *AParent, CApplication *AApplication) {
+    CTGBot::CreateProcess(AParent, AApplication);
 }
 
 #endif //APOSTOL_PROCESSES_HPP
