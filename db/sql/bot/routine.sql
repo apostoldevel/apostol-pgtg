@@ -5,58 +5,20 @@
 CREATE OR REPLACE FUNCTION bot.webhook (
   bot_id    uuid,
   body      jsonb
-) RETURNS   bool
+) RETURNS   void
 AS $$
 DECLARE
-  b         record;
   r         record;
-  m         record;
-  c         record;
-  f         record;
-
-  message   text;
+  vName     text;
 BEGIN
-  SELECT * INTO b FROM bot.list WHERE id = bot_id;
-
-  IF NOT FOUND THEN
-    RETURN false;
-  END IF;
-
-  SELECT * INTO r FROM jsonb_to_record(body) AS x(message jsonb, update_id double precision);
-  SELECT * INTO m FROM jsonb_to_record(r.message) AS x(chat jsonb, date double precision, "from" jsonb, text text, entities jsonb, update_id double precision);
-  SELECT * INTO c FROM jsonb_to_record(m.chat) AS x(id int, type text, username text, last_name text, full_name text);
-  SELECT * INTO f FROM jsonb_to_record(m."from") AS x(id int, is_bot bool, username text, last_name text, full_name text, language_code text);
-
-  CASE m.text
-  WHEN '/start' THEN
-    IF f.language_code = 'ru' THEN
-      message := format('Здравствуйте! Меня зовут %s.', b.full_name);
-    ELSE
-      message := format('Hello! My name is %s.', b.full_name);
+  FOR r IN SELECT id, username FROM bot.list WHERE id = bot_id
+  LOOP
+    vName := concat(lower(r.username), '_webhook');
+    PERFORM FROM pg_namespace n INNER JOIN pg_proc p ON n.oid = p.pronamespace WHERE n.nspname = 'bot' AND p.proname = vName;
+    IF FOUND THEN
+      EXECUTE format('SELECT bot.%s($1, $2);', vName) USING r.id, body;
     END IF;
-  WHEN '/help' THEN
-    IF f.language_code = 'ru' THEN
-      message := 'К сожалению, я пока не могу вам помочь.';
-    ELSE
-       message := 'Unfortunately, I can''t help you yet.';
-    END IF;
-  WHEN '/settings' THEN
-    IF f.language_code = 'ru' THEN
-      message := 'Не применимо.';
-    ELSE
-      message := 'Not applicable.';
-    END IF;
-  ELSE
-    IF f.language_code = 'ru' THEN
-      message := 'Неизвестная команда.';
-    ELSE
-      message := 'Unknown command.';
-    END IF;
-  END CASE;
-
-  PERFORM tg.send_message(bot_id, c.id, message);
-
-  RETURN true;
+  END LOOP;
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
@@ -71,10 +33,15 @@ CREATE OR REPLACE FUNCTION bot.heartbeat (
 AS $$
 DECLARE
   r         record;
+  vName     text;
 BEGIN
-  FOR r IN SELECT id FROM bot.list
+  FOR r IN SELECT id, username FROM bot.list
   LOOP
-
+    vName := concat(lower(r.username), '_heartbeat');
+    PERFORM FROM pg_namespace n INNER JOIN pg_proc p ON n.oid = p.pronamespace WHERE n.nspname = 'bot' AND p.proname = vName;
+    IF FOUND THEN
+      EXECUTE format('SELECT bot.%s($1);', vName) USING r.id;
+    END IF;
   END LOOP;
 END
 $$ LANGUAGE plpgsql

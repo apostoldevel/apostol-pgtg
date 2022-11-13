@@ -25,6 +25,7 @@ All you need to do is to implement a handler function to process messages coming
        ~~~
        * `you.domain.org` - You domain name;
 
+
 2. Configure [Nginx](https://nginx.org) so that telegram requests are redirected to **pgTG** on port `4980`:
 
     <details>
@@ -53,55 +54,68 @@ All you need to do is to implement a handler function to process messages coming
       ~~~
     </details> 
 
+
 3. Build and install **pgTG**.
+
+
 4. Connect to the database `pgtg`:
    ~~~shell
    sudo -u postgres psql -d pgtg -U http
    ~~~
+   
+
 5. Register your bot:
    ~~~postgresql
-   SELECT bot.add('00000000-0000-4000-8000-000000000001', '<API_TOKEN>', '<HANDLER_FUNCTION>', '<BOT_NAME>', null, 'en');
+   SELECT bot.add('00000000-0000-4000-8000-000000000001', '<API_TOKEN>', '<BOT_USERNAME>', '<BOT_NAME>', null, 'en');
    ~~~
-   * `API_TOKEN` - Telegram bot API Token.
-   * `HANDLER_FUNCTION` - A handler function written in the PL/pgSQL programming language and located in the `bot` schema. For example `example_bot`.
-   * `BOT_NAME` - Telegram bot name.
+   * `API_TOKEN` - Telegram bot API Token. Example: `0000000000:AAxxxXXXxxxXXXxxxXXXxxxXXXxxxXXXxxx`;
+   * `BOT_USERNAME` - Telegram bot username. Example: `MyTelegramBot` or `MyTelegram_bot`; 
+   * `BOT_NAME` - Telegram bot name. Example: `My Telegram Bot`.
+   
+
+6. Create a `Webhook` function in the `bot` schema:
+   * The function name must start with your bot username and end with `_webhook`.
+   
+
+7. Create a `Heartbeat` function in the `bot` schema:
+   * The function name must start with your bot username and end with `_heartbeat`.
 
 
-6. Create a message handler function in the `bot` schema that you specified in the `HANDLER_FUNCTION` parameter when registering the bot. It can match the name of your bot.
-
-### Handler function example:
+### Webhook function example:
 <details>
-  <summary>bot.example_bot</summary>
+  <summary>MyTelegramBot_webhook</summary>
 
 ~~~postgresql
-CREATE OR REPLACE FUNCTION bot.example_bot (
+--CREATE OR REPLACE FUNCTION bot.MyTelegram_bot_webhook (
+--OR
+CREATE OR REPLACE FUNCTION bot.MyTelegramBot_webhook (
   bot_id    uuid,
   body      jsonb
-) RETURNS   bool
+) RETURNS   void
 AS $$
 DECLARE
-  b         record;
   r         record;
+  b         record;
   m         record;
   c         record;
   f         record;
 
   message   text;
 BEGIN
-  SELECT * INTO b FROM bot.list WHERE id = bot_id;
+   SELECT * INTO r FROM bot.list WHERE id = bot_id;
 
-  IF NOT FOUND THEN
-    RETURN false;
-  END IF;
+   IF NOT FOUND THEN
+      RETURN;
+   END IF;
 
-  SELECT * INTO r FROM jsonb_to_record(body) AS x(message jsonb, update_id double precision);
-  SELECT * INTO m FROM jsonb_to_record(r.message) AS x(chat jsonb, date double precision, "from" jsonb, text text, entities jsonb, update_id double precision);
-  SELECT * INTO c FROM jsonb_to_record(m.chat) AS x(id int, type text, username text, last_name text, first_name text);
-  SELECT * INTO f FROM jsonb_to_record(m."from") AS x(id int, is_bot bool, username text, last_name text, first_name text, language_code text);
+   SELECT * INTO b FROM jsonb_to_record(body) AS x(message jsonb, update_id double precision);
+   SELECT * INTO m FROM jsonb_to_record(b.message) AS x(chat jsonb, date double precision, "from" jsonb, text text, entities jsonb, update_id double precision);
+   SELECT * INTO c FROM jsonb_to_record(m.chat) AS x(id int, type text, username text, last_name text, full_name text);
+   SELECT * INTO f FROM jsonb_to_record(m."from") AS x(id int, is_bot bool, username text, last_name text, full_name text, language_code text);
 
   CASE m.text
   WHEN '/start' THEN
-    message := format('Hello! My name is %s.', b.full_name);
+    message := format('Hello! My name is %s.', r.full_name);
   WHEN '/help' THEN
     message := 'Unfortunately, I can''t help you yet.';
   WHEN '/settings' THEN
@@ -110,9 +124,35 @@ BEGIN
     message := 'Unknown command.';
   END CASE;
 
-  PERFORM tg.send_message(bot_id, c.id, message);
+  PERFORM tg.send_message(r.id, c.id, message);
+END
+$$ LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = bot, pg_temp;
+~~~
+</details> 
 
-  RETURN true;
+### Heartbeat function example:
+<details>
+  <summary>MyTelegramBot_heartbeat</summary>
+
+~~~postgresql
+--CREATE OR REPLACE FUNCTION bot.MyTelegram_bot_heartbeat (
+--OR
+CREATE OR REPLACE FUNCTION bot.MyTelegramBot_heartbeat (
+  bot_id    uuid
+) RETURNS   void
+AS $$
+DECLARE
+  r         record;
+BEGIN
+  SELECT * INTO r FROM bot.list WHERE id = bot_id;
+
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
+  
+  -- Some code
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
