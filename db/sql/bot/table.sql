@@ -1,4 +1,8 @@
 --------------------------------------------------------------------------------
+-- BOT -------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
 -- bot.list --------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -21,3 +25,60 @@ COMMENT ON COLUMN bot.list.full_name IS 'Bot name';
 COMMENT ON COLUMN bot.list.secret IS 'Secret code for authorization (if necessary).';
 COMMENT ON COLUMN bot.list.language_code IS 'Language code';
 COMMENT ON COLUMN bot.list.created IS 'Date and time of creation';
+
+--------------------------------------------------------------------------------
+-- bot.context -----------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE TABLE bot.context (
+  bot_id        uuid REFERENCES bot.list ON DELETE CASCADE,
+  chat_id       int NOT NULL,
+  user_id       int NOT NULL,
+  command       text NOT NULL,
+  text          text,
+  message       jsonb,
+  update_id     double precision NOT NULL,
+  PRIMARY KEY (bot_id, chat_id, user_id)
+);
+
+COMMENT ON TABLE bot.context IS 'Bot context.';
+
+COMMENT ON COLUMN bot.context.bot_id IS 'Bot ID';
+COMMENT ON COLUMN bot.context.chat_id IS 'Char ID';
+COMMENT ON COLUMN bot.context.user_id IS 'User ID';
+COMMENT ON COLUMN bot.context.command IS 'Current command';
+COMMENT ON COLUMN bot.context.text IS 'Message text';
+COMMENT ON COLUMN bot.context.message IS 'Message data';
+COMMENT ON COLUMN bot.context.update_id IS 'Last updated';
+
+CREATE INDEX ON bot.context (bot_id);
+
+--------------------------------------------------------------------------------
+-- bot.data --------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE TABLE bot.data (
+  bot_id        uuid REFERENCES bot.list ON DELETE CASCADE,
+  chat_id       int NOT NULL,
+  user_id       int NOT NULL,
+  category      text NOT NULL,
+  key           text NOT NULL,
+  value         text NOT NULL,
+  update_id     double precision NOT NULL,
+  PRIMARY KEY (bot_id, chat_id, user_id, category, key)
+);
+
+COMMENT ON TABLE bot.data IS 'Bot data.';
+
+COMMENT ON COLUMN bot.data.bot_id IS 'Bot ID';
+COMMENT ON COLUMN bot.data.chat_id IS 'Char ID';
+COMMENT ON COLUMN bot.data.user_id IS 'User ID';
+COMMENT ON COLUMN bot.data.category IS 'Category';
+COMMENT ON COLUMN bot.data.key IS 'Key';
+COMMENT ON COLUMN bot.data.value IS 'Value';
+COMMENT ON COLUMN bot.data.update_id IS 'Last updated';
+
+CREATE INDEX ON bot.data (bot_id);
+CREATE INDEX ON bot.data (bot_id, chat_id, user_id, category);
+CREATE INDEX ON bot.data (category);
+CREATE INDEX ON bot.data (key);
