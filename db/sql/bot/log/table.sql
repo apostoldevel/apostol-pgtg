@@ -31,22 +31,3 @@ CREATE INDEX ON bot.log (username);
 CREATE INDEX ON bot.log (code);
 CREATE INDEX ON bot.log (event);
 CREATE INDEX ON bot.log (category);
-
---------------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION ft_log_insert()
-RETURNS trigger AS $$
-BEGIN
-  NEW.datetime := clock_timestamp();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql
-   SECURITY DEFINER
-   SET search_path = kernel, pg_temp;
-
---------------------------------------------------------------------------------
-
-CREATE TRIGGER t_log_insert
-  BEFORE INSERT ON bot.log
-  FOR EACH ROW
-  EXECUTE PROCEDURE ft_log_insert();

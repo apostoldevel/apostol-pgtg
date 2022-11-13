@@ -2,7 +2,7 @@
 -- AddEventLog -----------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION AddEventLog (
+CREATE OR REPLACE FUNCTION bot.AddEventLog (
   pType		char,
   pUsername text,
   pCode		integer,
@@ -27,7 +27,7 @@ $$ LANGUAGE plpgsql
 -- NewEventLog -----------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION NewEventLog (
+CREATE OR REPLACE FUNCTION bot.NewEventLog (
   pType		char,
   pUsername text,
   pCode		integer,
@@ -49,7 +49,7 @@ $$ LANGUAGE plpgsql
 -- WriteToEventLog -------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION WriteToEventLog (
+CREATE OR REPLACE FUNCTION bot.WriteToEventLog (
   pType		char,
   pCode		integer,
   pText		text,
@@ -83,7 +83,7 @@ $$ LANGUAGE plpgsql
 -- DeleteEventLog --------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION DeleteEventLog (
+CREATE OR REPLACE FUNCTION bot.DeleteEventLog (
   pId		bigint
 ) RETURNS	void
 AS $$
@@ -98,7 +98,7 @@ $$ LANGUAGE plpgsql
 -- FUNCTION ParseMessage -------------------------------------------------------
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION ParseMessage (
+CREATE OR REPLACE FUNCTION bot.ParseMessage (
   pMessage      text,
   OUT code      int,
   OUT message   text
@@ -119,7 +119,7 @@ $$ LANGUAGE plpgsql STRICT IMMUTABLE;
 -- WriteDiagnostics ------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION WriteDiagnostics (
+CREATE OR REPLACE FUNCTION bot.WriteDiagnostics (
   pMessage      text,
   pContext      text default null
 ) RETURNS       void
@@ -146,7 +146,7 @@ $$ LANGUAGE plpgsql
 -- FUNCTION SetVar -------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION SetVar (
+CREATE OR REPLACE FUNCTION bot.SetVar (
   pType		text,
   pName		text,
   pValue	text
@@ -161,7 +161,7 @@ $$ LANGUAGE plpgsql
 
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION SetVar (
+CREATE OR REPLACE FUNCTION bot.SetVar (
   pType		text,
   pName		text,
   pValue	numeric
@@ -176,7 +176,7 @@ $$ LANGUAGE plpgsql
 
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION SetVar (
+CREATE OR REPLACE FUNCTION bot.SetVar (
   pType		text,
   pName		text,
   pValue	uuid
@@ -191,7 +191,7 @@ $$ LANGUAGE plpgsql
 
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION SetVar (
+CREATE OR REPLACE FUNCTION bot.SetVar (
   pType		text,
   pName		text,
   pValue	timestamp
@@ -206,7 +206,7 @@ $$ LANGUAGE plpgsql
 
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION SetVar (
+CREATE OR REPLACE FUNCTION bot.SetVar (
   pType		text,
   pName		text,
   pValue	timestamptz
@@ -221,7 +221,7 @@ $$ LANGUAGE plpgsql
 
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION SetVar (
+CREATE OR REPLACE FUNCTION bot.SetVar (
   pType		text,
   pName		text,
   pValue	date
@@ -238,7 +238,7 @@ $$ LANGUAGE plpgsql
 -- FUNCTION GetVar -------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION GetVar (
+CREATE OR REPLACE FUNCTION bot.GetVar (
   pType		text,
   pName 	text
 ) RETURNS   text
@@ -265,7 +265,7 @@ $$ LANGUAGE plpgsql
 -- FUNCTION SetErrorMessage ----------------------------------------------------
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION SetErrorMessage (
+CREATE OR REPLACE FUNCTION bot.SetErrorMessage (
   pMessage 	text
 ) RETURNS 	void
 AS $$
@@ -280,7 +280,7 @@ $$ LANGUAGE plpgsql
 -- FUNCTION GetErrorMessage ----------------------------------------------------
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION GetErrorMessage (
+CREATE OR REPLACE FUNCTION bot.GetErrorMessage (
 ) RETURNS 	text
 AS $$
 BEGIN

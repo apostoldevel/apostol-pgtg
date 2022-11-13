@@ -2,7 +2,7 @@
 -- VIEW EventLog ---------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-CREATE OR REPLACE VIEW EventLog (Id, Type, TypeName, DateTime, TimeStamp, UserName,
+CREATE OR REPLACE VIEW bot.EventLog (Id, Type, TypeName, DateTime, TimeStamp, UserName,
   Code, Event, Text, Category
 )
 AS
@@ -16,4 +16,4 @@ AS
          datetime, timestamp, username, code, event, text, category
     FROM bot.log;
 
-GRANT SELECT ON EventLog TO :username;
+GRANT SELECT ON bot.EventLog TO :username;
