@@ -1,4 +1,5 @@
 \ir view.sql
 \ir routine.sql
 
+\ir './log/update.psql'
 \ir './MyTelegramBot/update.psql'

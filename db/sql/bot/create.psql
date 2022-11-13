@@ -3,4 +3,5 @@
 \ir view.sql
 \ir routine.sql
 
+\ir './log/create.psql'
 \ir './MyTelegramBot/create.psql'
