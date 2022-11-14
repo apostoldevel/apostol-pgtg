@@ -318,14 +318,14 @@ CREATE OR REPLACE FUNCTION bot.context (
   pCommand      text,
   pText         text,
   pMessage      jsonb,
-  pUpdateId     double precision
+  pUpdated      timestamptz
 ) RETURNS       void
 AS $$
 BEGIN
-  INSERT INTO bot.context (bot_id, chat_id, user_id, command, text, message, update_id)
-  VALUES (pBotId, pChatId, pUserId, pCommand, pText, pMessage, pUpdateId)
+  INSERT INTO bot.context (bot_id, chat_id, user_id, command, text, message, updated)
+  VALUES (pBotId, pChatId, pUserId, pCommand, pText, pMessage, coalesce(pUpdated, Now()))
   ON CONFLICT (bot_id, chat_id, user_id)
-  DO UPDATE SET command = pCommand, text = pText, message = pMessage, update_id = pUpdateId;
+  DO UPDATE SET command = pCommand, text = pText, message = pMessage, updated = coalesce(pUpdated, Now());
 
   PERFORM SetVar('context', 'bot_id', pBotId);
   PERFORM SetVar('context', 'chat_id', pChatId);
@@ -347,14 +347,15 @@ CREATE OR REPLACE FUNCTION bot.data (
   pCategory     text,
   pKey          text,
   pValue        text,
-  pUpdateId     double precision
+  pData         jsonb,
+  pUpdated      timestamptz
 ) RETURNS       void
 AS $$
 BEGIN
-  INSERT INTO bot.data (bot_id, chat_id, user_id, category, key, value, update_id)
-  VALUES (pBotId, pChatId, pUserId, pCategory, pKey, pValue, pUpdateId)
+  INSERT INTO bot.data (bot_id, chat_id, user_id, category, key, value, data, updated)
+  VALUES (pBotId, pChatId, pUserId, pCategory, pKey, pValue, pData, coalesce(pUpdated, Now()))
   ON CONFLICT (bot_id, chat_id, user_id, category, key)
-  DO UPDATE SET value = pValue, update_id = pUpdateId;
+  DO UPDATE SET value = pValue, data = pData, updated = coalesce(pUpdated, Now());
 END;
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
@@ -368,14 +369,15 @@ CREATE OR REPLACE FUNCTION bot.set_data (
   pCategory     text,
   pKey          text,
   pValue        text,
-  pUpdateId     double precision,
+  pData         jsonb DEFAULT null,
+  pUpdated      timestamptz DEFAULT null,
   pUserId       int DEFAULT bot.current_user_id(),
   pChatId       int DEFAULT bot.current_chat_id(),
   pBotId        uuid DEFAULT bot.current_bot_id()
 ) RETURNS       void
 AS $$
 BEGIN
-  PERFORM bot.data(pBotId, pChatId, pUserId, pCategory, pKey, pValue, pUpdateId);
+  PERFORM bot.data(pBotId, pChatId, pUserId, pCategory, pKey, pValue, pData, pUpdated);
 END;
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
@@ -392,12 +394,14 @@ CREATE OR REPLACE FUNCTION bot.get_data (
   pChatId       int DEFAULT bot.current_chat_id(),
   pBotId        uuid DEFAULT bot.current_bot_id(),
   OUT key       text,
-  OUT value     text
+  OUT value     text,
+  OUT data      jsonb,
+  OUT updated   timestamptz
 ) RETURNS       SETOF record
 AS $$
 BEGIN
   RETURN QUERY
-    SELECT d.key, d.value
+    SELECT d.key, d.value, d.data, d.updated
       FROM bot.data d
      WHERE d.bot_id = pBotId
        AND d.chat_id = pChatId

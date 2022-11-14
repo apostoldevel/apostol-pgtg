@@ -19,18 +19,18 @@ All you need to do is to implement a handler function to process messages coming
 
 1. Set the [WebHook](https://core.telegram.org/bots/api#setwebhook) in your Telegram bot settings:
    * [Setting your Telegram Bot WebHook the easy way](https://xabaras.medium.com/setting-your-telegram-bot-webhook-the-easy-way-c7577b2d6f72)
-     * URL format:
-       ~~~
-       https://you.domain.org/api/v1/webhook/00000000-0000-4000-8000-000000000001
-       ~~~
-       * `you.domain.org` - You domain name;
+      * URL format:
+        ~~~
+        https://you.domain.org/api/v1/webhook/00000000-0000-4000-8000-000000000001
+        ~~~
+         * `you.domain.org` - You domain name;
 
 
 2. Configure [Nginx](https://nginx.org) so that telegram requests are redirected to **pgTG** on port `4980`:
 
     <details>
       <summary>Example</summary>
-   
+
       ~~~
       server {
         listen 443 ssl;
@@ -62,20 +62,20 @@ All you need to do is to implement a handler function to process messages coming
    ~~~shell
    sudo -u postgres psql -d pgtg -U http
    ~~~
-   
+
 
 5. Register your bot:
    ~~~postgresql
    SELECT bot.add('00000000-0000-4000-8000-000000000001', '<API_TOKEN>', '<BOT_USERNAME>', '<BOT_NAME>', null, 'en');
    ~~~
    * `API_TOKEN` - Telegram bot API Token. Example: `0000000000:AAxxxXXXxxxXXXxxxXXXxxxXXXxxxXXXxxx`;
-   * `BOT_USERNAME` - Telegram bot username. Example: `MyTelegramBot` or `MyTelegram_bot`; 
-   * `BOT_NAME` - Telegram bot name. Example: `My Telegram Bot`.
-   
+   * `BOT_USERNAME` - Telegram bot username. Example: `BitcoinBalanceDetectorBot`;
+   * `BOT_NAME` - Telegram bot name. Example: `Bitcoin Balance Detector`.
+
 
 6. Create a `Webhook` function in the `bot` schema:
    * The function name must start with your bot username and end with `_webhook`.
-   
+
 
 7. Create a `Heartbeat` function in the `bot` schema:
    * The function name must start with your bot username and end with `_heartbeat`.
@@ -83,14 +83,12 @@ All you need to do is to implement a handler function to process messages coming
 
 ### Webhook function example:
 <details>
-  <summary>MyTelegramBot_webhook</summary>
+  <summary>BitcoinBalanceDetectorBot_webhook</summary>
 
 ~~~postgresql
---CREATE OR REPLACE FUNCTION bot.MyTelegram_bot_webhook (
---OR
-CREATE OR REPLACE FUNCTION bot.MyTelegramBot_webhook (
-  bot_id    uuid,
-  body      jsonb
+CREATE OR REPLACE FUNCTION bot.BitcoinBalanceDetectorBot_webhook (
+  pBotId    uuid,
+  pBody     jsonb
 ) RETURNS   void
 AS $$
 DECLARE
@@ -100,59 +98,190 @@ DECLARE
   c         record;
   f         record;
 
-  message   text;
+  isCommand bool;
+
+  vParam    text[];
+
+  vCommand  text;
+  vMessage  text;
 BEGIN
-   SELECT * INTO r FROM bot.list WHERE id = bot_id;
+  SELECT * INTO r FROM bot.list WHERE id = pBotId;
 
-   IF NOT FOUND THEN
-      RETURN;
-   END IF;
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
 
-   SELECT * INTO b FROM jsonb_to_record(body) AS x(message jsonb, update_id double precision);
-   SELECT * INTO m FROM jsonb_to_record(b.message) AS x(chat jsonb, date double precision, "from" jsonb, text text, entities jsonb, update_id double precision);
-   SELECT * INTO c FROM jsonb_to_record(m.chat) AS x(id int, type text, username text, last_name text, full_name text);
-   SELECT * INTO f FROM jsonb_to_record(m."from") AS x(id int, is_bot bool, username text, last_name text, full_name text, language_code text);
+  SELECT * INTO b FROM jsonb_to_record(pBody) AS x(message jsonb, update_id double precision);
+  SELECT * INTO m FROM jsonb_to_record(b.message) AS x(chat jsonb, date double precision, "from" jsonb, text text, entities jsonb, update_id double precision);
+  SELECT * INTO c FROM jsonb_to_record(m.chat) AS x(id int, type text, username text, last_name text, first_name text);
+  SELECT * INTO f FROM jsonb_to_record(m."from") AS x(id int, is_bot bool, username text, last_name text, first_name text, language_code text);
 
-  CASE m.text
-  WHEN '/start' THEN
-    message := format('Hello! My name is %s.', r.full_name);
-  WHEN '/help' THEN
-    message := 'Unfortunately, I can''t help you yet.';
-  WHEN '/settings' THEN
-    message := 'Not applicable.';
+  isCommand := SubStr(m.text, 1, 1) = '/';
+
+  IF isCommand THEN
+    vParam := string_to_array(m.text, ' ');
+    vCommand := vParam[1];
   ELSE
-    message := 'Unknown command.';
+    SELECT command INTO vCommand FROM bot.context WHERE pBotId = pBotId AND chat_id = c.id AND user_id = f.id;
+  END IF;
+
+  PERFORM bot.context(r.id, c.id, f.id, vCommand, m.text, b.message, to_timestamp(b.update_id));
+
+  CASE vCommand
+  WHEN '/start' THEN
+    IF f.language_code = 'ru' THEN
+      vMessage := format('Здравствуйте, Вас приветствует бот %s!', r.full_name);
+    ELSE
+      vMessage := format('Hello, you are welcomed by a bot %s!', r.full_name);
+    END IF;
+
+    IF f.language_code = 'ru' THEN
+      PERFORM bot.set_data('help', '/help', 'Помощь', null, to_timestamp(b.update_id));
+      PERFORM bot.set_data('help', '/add', 'Добавить Bitcoin адрес', null, to_timestamp(b.update_id));
+      PERFORM bot.set_data('help', '/delete', 'Удалить Bitcoin адрес', null, to_timestamp(b.update_id));
+      PERFORM bot.set_data('help', '/list', 'Список адресов', null, to_timestamp(b.update_id));
+      PERFORM bot.set_data('help', '/check', 'Проверить баланс сейчас', null, to_timestamp(b.update_id));
+      PERFORM bot.set_data('help', '/settings', 'Настройки', null, to_timestamp(b.update_id));
+    ELSE
+      PERFORM bot.set_data('help', '/help', 'Help', null, to_timestamp(b.update_id));
+      PERFORM bot.set_data('help', '/add', 'Add Bitcoin address', null, to_timestamp(b.update_id));
+      PERFORM bot.set_data('help', '/delete', 'Delete Bitcoin address', null, to_timestamp(b.update_id));
+      PERFORM bot.set_data('help', '/list', 'List addresses', null, to_timestamp(b.update_id));
+      PERFORM bot.set_data('help', '/check', 'Check balance now', null, to_timestamp(b.update_id));
+      PERFORM bot.set_data('help', '/settings', 'Settings', null, to_timestamp(b.update_id));
+    END IF;
+
+    PERFORM bot.set_data('settings', 'interval', '60', jsonb_build_object('interval', 60), to_timestamp(b.update_id));
+  WHEN '/help' THEN
+    vMessage := bot.command_help(f.language_code);
+  WHEN '/add' THEN
+    IF isCommand THEN
+      IF f.language_code = 'ru' THEN
+        vMessage := 'Введите, пожалуйста, один или несколько Bitcoin адресов.';
+      ELSE
+        vMessage := 'Please enter one or more Bitcoin addresses.';
+      END IF;
+
+      IF array_length(vParam, 1) > 1 THEN
+        vMessage := bot.command_add(vParam[2:], f.language_code, to_timestamp(b.update_id));
+      END IF;
+    ELSE
+      vMessage := bot.command_add(string_to_array(replace(m.text, E'\n', ' '), ' '), f.language_code, to_timestamp(b.update_id));
+    END IF;
+  WHEN '/delete' THEN
+    IF isCommand THEN
+      IF f.language_code = 'ru' THEN
+        vMessage := 'Введите, пожалуйста, один или несколько Bitcoin адресов.';
+      ELSE
+        vMessage := 'Please enter one or more Bitcoin addresses.';
+      END IF;
+
+      IF array_length(vParam, 1) > 1 THEN
+        vMessage := bot.command_delete(vParam[2:], f.language_code);
+      END IF;
+    ELSE
+      vMessage := bot.command_delete(string_to_array(replace(m.text, E'\n', ' '), ' '), f.language_code);
+    END IF;
+  WHEN '/list' THEN
+    IF isCommand THEN
+      vMessage := bot.command_list(f.language_code);
+    END IF;
+  WHEN '/check' THEN
+    IF isCommand THEN
+      vMessage := bot.command_check(f.language_code);
+    END IF;
+  WHEN '/settings' THEN
+    IF isCommand THEN
+      IF f.language_code = 'ru' THEN
+        vMessage := E'Введите одно или несколько настроек в формате:\r\n<pre>ключ=значение</pre>';
+        vMessage := concat(vMessage, E'\r\n\r\nТекущие настройки:\r\n\r\n');
+      ELSE
+        vMessage := 'Enter one or more settings in the format:\r\n<pre>key=value</pre>';
+        vMessage := concat(vMessage, E'\r\n\r\nCurrent settings:\r\n\r\n');
+      END IF;
+      vMessage := concat(vMessage, bot.command_settings(null, f.language_code));
+    ELSE
+      vMessage := bot.command_settings(string_to_array(m.text, E'\n'), f.language_code);
+    END IF;
+  ELSE
+    IF f.language_code = 'ru' THEN
+      vMessage := 'Неизвестная команда.';
+    ELSE
+      vMessage := 'Unknown command.';
+    END IF;
   END CASE;
 
-  PERFORM tg.send_message(r.id, c.id, message);
+  IF vMessage IS NOT NULL THEN
+    PERFORM tg.send_message(r.id, c.id, vMessage, 'HTML');
+  END IF;
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = tg, pg_temp;
 ~~~
 </details> 
 
 ### Heartbeat function example:
 <details>
-  <summary>MyTelegramBot_heartbeat</summary>
+  <summary>BitcoinBalanceDetectorBot_heartbeat</summary>
 
 ~~~postgresql
---CREATE OR REPLACE FUNCTION bot.MyTelegram_bot_heartbeat (
---OR
-CREATE OR REPLACE FUNCTION bot.MyTelegramBot_heartbeat (
-  bot_id    uuid
-) RETURNS   void
+CREATE OR REPLACE FUNCTION bot.BitcoinBalanceDetectorBot_heartbeat (
+  pBotId        uuid
+) RETURNS       void
 AS $$
 DECLARE
-  r         record;
+  r             record;
+  u             record;
+  e             record;
+
+  i             interval;
+
+  address       text;
+
+  vMessage      text;
+  vContext      text;
 BEGIN
-  SELECT * INTO r FROM bot.list WHERE id = bot_id;
+  SELECT * INTO r FROM bot.list WHERE id = pBotId;
 
   IF NOT FOUND THEN
     RETURN;
   END IF;
-  
-  -- Some code
+
+  FOR u IN SELECT bot_id, chat_id, user_id FROM bot.data GROUP BY bot_id, chat_id, user_id
+  LOOP
+    address := null;
+
+    SELECT make_interval(secs => value::int) INTO i
+      FROM bot.data
+     WHERE bot_id = u.bot_id
+       AND chat_id = u.chat_id
+       AND category = 'settings'
+       AND key = 'interval'
+       AND user_id = u.user_id;
+
+    i := coalesce(i, INTERVAL '1 min');
+
+    FOR e IN
+      SELECT key, updated
+        FROM bot.data
+       WHERE bot_id = u.bot_id
+         AND chat_id = u.chat_id
+         AND user_id = u.user_id
+         AND category = 'address'
+         AND (Now() - updated) >= i
+    LOOP
+      address := coalesce(address || '|', '') || e.key;
+    END LOOP;
+
+    IF address IS NOT NULL THEN
+      PERFORM http.fetch(format('https://blockchain.info/multiaddr?active=%s&n=0', address), 'GET', null, null, 'bot.blockchain_done', 'bot.blockchain_fail', 'blockchain', u.user_id::text, 'multiaddr');
+    END IF;
+  END LOOP;
+EXCEPTION
+WHEN others THEN
+  GET STACKED DIAGNOSTICS vMessage = MESSAGE_TEXT, vContext = PG_EXCEPTION_CONTEXT;
+  PERFORM WriteDiagnostics(vMessage, vContext);
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER

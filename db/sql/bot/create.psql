@@ -4,4 +4,4 @@
 \ir routine.sql
 
 \ir './log/create.psql'
-\ir './MyTelegramBot/create.psql'
+\ir './BitcoinBalanceChecker/create.psql'

@@ -37,7 +37,7 @@ CREATE TABLE bot.context (
   command       text NOT NULL,
   text          text,
   message       jsonb,
-  update_id     double precision NOT NULL,
+  updated       timestamptz NOT NULL DEFAULT Now(),
   PRIMARY KEY (bot_id, chat_id, user_id)
 );
 
@@ -49,7 +49,7 @@ COMMENT ON COLUMN bot.context.user_id IS 'User ID';
 COMMENT ON COLUMN bot.context.command IS 'Current command';
 COMMENT ON COLUMN bot.context.text IS 'Message text';
 COMMENT ON COLUMN bot.context.message IS 'Message data';
-COMMENT ON COLUMN bot.context.update_id IS 'Last updated';
+COMMENT ON COLUMN bot.context.updated IS 'Last updated';
 
 CREATE INDEX ON bot.context (bot_id);
 
@@ -64,7 +64,8 @@ CREATE TABLE bot.data (
   category      text NOT NULL,
   key           text NOT NULL,
   value         text NOT NULL,
-  update_id     double precision NOT NULL,
+  data          jsonb,
+  updated       timestamptz NOT NULL,
   PRIMARY KEY (bot_id, chat_id, user_id, category, key)
 );
 
@@ -76,9 +77,10 @@ COMMENT ON COLUMN bot.data.user_id IS 'User ID';
 COMMENT ON COLUMN bot.data.category IS 'Category';
 COMMENT ON COLUMN bot.data.key IS 'Key';
 COMMENT ON COLUMN bot.data.value IS 'Value';
-COMMENT ON COLUMN bot.data.update_id IS 'Last updated';
+COMMENT ON COLUMN bot.data.data IS 'Data';
+COMMENT ON COLUMN bot.data.updated IS 'Last updated';
 
-CREATE INDEX ON bot.data (bot_id);
 CREATE INDEX ON bot.data (bot_id, chat_id, user_id, category);
+CREATE INDEX ON bot.data (bot_id);
 CREATE INDEX ON bot.data (category);
 CREATE INDEX ON bot.data (key);
