@@ -188,7 +188,7 @@ BEGIN
     END LOOP;
 
     IF address IS NOT NULL THEN
-      PERFORM http.fetch(format('https://blockchain.info/multiaddr?active=%s&n=0', address), 'GET', null, null, 'bot.blockchain_done', 'bot.blockchain_fail', 'blockchain', u.user_id::text, 'multiaddr');
+      PERFORM http.fetch(format('https://blockchain.info/multiaddr?active=%s&n=0', address), 'GET', null, null, 'bot.blockchain_done', 'bot.blockchain_fail', 'blockchain', pBotId::text, 'multiaddr');
     END IF;
   END LOOP;
 EXCEPTION
@@ -213,6 +213,8 @@ DECLARE
   e             record;
   m             record;
 
+  uBotId        uuid;
+
   reply         jsonb;
 
   vMessage      text;
@@ -222,7 +224,10 @@ DECLARE
   vNew          text;
 BEGIN
   SELECT agent, profile, command, method, resource, status, status_text, response INTO r FROM http.fetch WHERE id = pRequest;
-  SELECT language_code INTO vLanguageCode FROM bot.list WHERE id = current_bot_id();
+
+  uBotId := r.profile::uuid;
+
+  SELECT language_code INTO vLanguageCode FROM bot.list WHERE id = uBotId;
 
   reply := r.response::jsonb;
 
@@ -240,7 +245,7 @@ BEGIN
       LOOP
         vNew := format(E'%s\t%s\t%s\t%s', e.n_tx, to_char(e.total_received / 100000000, 'FM999990.00000000'), to_char(e.total_sent / 100000000, 'FM999990.00000000'), to_char(e.final_balance / 100000000, 'FM999990.00000000'));
 
-        FOR m IN SELECT bot_id, chat_id, user_id FROM bot.data WHERE category = 'address' AND key = e.address GROUP BY bot_id, chat_id, user_id
+        FOR m IN SELECT bot_id, chat_id, user_id FROM bot.data WHERE bot_id = uBotId AND category = 'address' AND key = e.address GROUP BY bot_id, chat_id, user_id
         LOOP
           SELECT value INTO vOld
             FROM bot.data
