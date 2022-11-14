@@ -80,6 +80,7 @@ All you need to do is to implement a handler function to process messages coming
 7. Create a `Heartbeat` function in the `bot` schema:
    * The function name must start with your bot username and end with `_heartbeat`.
 
+**Link to** [Bitcoin Balance Detector](http://t.me/BitcoinBalanceDetectorBot).
 
 ### Webhook function example:
 <details>
