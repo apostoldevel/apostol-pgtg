@@ -13,7 +13,8 @@ CREATE TABLE bot.list (
   full_name     text NOT NULL,
   secret        text,
   language_code text DEFAULT 'en',
-  created       timestamptz DEFAULT clock_timestamp() NOT NULL
+  created       timestamptz DEFAULT clock_timestamp() NOT NULL,
+  downtime      timestamptz NOT NULL DEFAULT Now()
 );
 
 COMMENT ON TABLE bot.list IS 'List of Telegram bots.';
@@ -25,6 +26,9 @@ COMMENT ON COLUMN bot.list.full_name IS 'Bot name';
 COMMENT ON COLUMN bot.list.secret IS 'Secret code for authorization (if necessary).';
 COMMENT ON COLUMN bot.list.language_code IS 'Language code';
 COMMENT ON COLUMN bot.list.created IS 'Date and time of creation';
+COMMENT ON COLUMN bot.list.downtime IS 'Downtime';
+
+CREATE INDEX ON bot.list (downtime);
 
 --------------------------------------------------------------------------------
 -- bot.context -----------------------------------------------------------------

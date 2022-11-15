@@ -97,6 +97,7 @@ DECLARE
   b         record;
   m         record;
   c         record;
+  u         record;
   f         record;
 
   isCommand bool;
@@ -113,104 +114,128 @@ BEGIN
   END IF;
 
   SELECT * INTO b FROM jsonb_to_record(pBody) AS x(message jsonb, update_id double precision);
-  SELECT * INTO m FROM jsonb_to_record(b.message) AS x(chat jsonb, date double precision, "from" jsonb, text text, entities jsonb, update_id double precision);
+  SELECT * INTO m FROM jsonb_to_record(b.message) AS x(chat jsonb, date double precision, "from" jsonb, text text, entities jsonb, document jsonb, message_id int);
   SELECT * INTO c FROM jsonb_to_record(m.chat) AS x(id int, type text, username text, last_name text, first_name text);
-  SELECT * INTO f FROM jsonb_to_record(m."from") AS x(id int, is_bot bool, username text, last_name text, first_name text, language_code text);
+  SELECT * INTO u FROM jsonb_to_record(m."from") AS x(id int, is_bot bool, username text, last_name text, first_name text, language_code text);
+  SELECT * INTO f FROM jsonb_to_record(m.document) AS x(file_id text, file_name text, file_size int, mime_type text, file_unique_id text);
 
-  isCommand := SubStr(m.text, 1, 1) = '/';
+  IF m.document IS NOT NULL THEN
+    IF f.mime_type = 'text/csv' THEN
+      IF u.language_code = 'ru' THEN
+        vMessage := format('Файл "%s" принят.', f.file_name);
+      ELSE
+        vMessage := format('File "%s" was accepted.', f.file_name);
+      END IF;
 
-  IF isCommand THEN
-    vParam := string_to_array(m.text, ' ');
-    vCommand := vParam[1];
-  ELSE
-    SELECT command INTO vCommand FROM bot.context WHERE pBotId = pBotId AND chat_id = c.id AND user_id = f.id;
+      PERFORM bot.new_file(f.file_id, r.id, c.id, u.id, f.file_name, '/', f.file_size, Now(), null, null, f.file_unique_id, f.mime_type);
+      PERFORM tg.get_file(r.id, f.file_id);
+    ELSE
+      IF u.language_code = 'ru' THEN
+        vMessage := format('Неверный тип файла: %s', f.mime_type);
+      ELSE
+        vMessage := format('Invalid file type: %s', f.mime_type);
+      END IF;
+    END IF;
   END IF;
 
-  PERFORM bot.context(r.id, c.id, f.id, vCommand, m.text, b.message, to_timestamp(b.update_id));
+  IF m.text IS NOT NULL THEN
 
-  CASE vCommand
-  WHEN '/start' THEN
-    IF f.language_code = 'ru' THEN
-      vMessage := format('Здравствуйте, Вас приветствует бот %s!', r.full_name);
-    ELSE
-      vMessage := format('Hello, you are welcomed by a bot %s!', r.full_name);
-    END IF;
+    isCommand := SubStr(m.text, 1, 1) = '/';
 
-    IF f.language_code = 'ru' THEN
-      PERFORM bot.set_data('help', '/help', 'Помощь', null, to_timestamp(b.update_id));
-      PERFORM bot.set_data('help', '/add', 'Добавить Bitcoin адрес', null, to_timestamp(b.update_id));
-      PERFORM bot.set_data('help', '/delete', 'Удалить Bitcoin адрес', null, to_timestamp(b.update_id));
-      PERFORM bot.set_data('help', '/list', 'Список адресов', null, to_timestamp(b.update_id));
-      PERFORM bot.set_data('help', '/check', 'Проверить баланс сейчас', null, to_timestamp(b.update_id));
-      PERFORM bot.set_data('help', '/settings', 'Настройки', null, to_timestamp(b.update_id));
-    ELSE
-      PERFORM bot.set_data('help', '/help', 'Help', null, to_timestamp(b.update_id));
-      PERFORM bot.set_data('help', '/add', 'Add Bitcoin address', null, to_timestamp(b.update_id));
-      PERFORM bot.set_data('help', '/delete', 'Delete Bitcoin address', null, to_timestamp(b.update_id));
-      PERFORM bot.set_data('help', '/list', 'List addresses', null, to_timestamp(b.update_id));
-      PERFORM bot.set_data('help', '/check', 'Check balance now', null, to_timestamp(b.update_id));
-      PERFORM bot.set_data('help', '/settings', 'Settings', null, to_timestamp(b.update_id));
-    END IF;
-
-    PERFORM bot.set_data('settings', 'interval', '60', jsonb_build_object('interval', 60), to_timestamp(b.update_id));
-  WHEN '/help' THEN
-    vMessage := bot.command_help(f.language_code);
-  WHEN '/add' THEN
     IF isCommand THEN
-      IF f.language_code = 'ru' THEN
-        vMessage := 'Введите, пожалуйста, один или несколько Bitcoin адресов.';
+      vParam := string_to_array(m.text, ' ');
+      vCommand := vParam[1];
+    ELSE
+      SELECT command INTO vCommand FROM bot.context WHERE pBotId = pBotId AND chat_id = c.id AND user_id = u.id;
+    END IF;
+
+    PERFORM bot.context(r.id, c.id, u.id, vCommand, m.text, b.message, to_timestamp(b.update_id));
+
+    CASE vCommand
+    WHEN '/start' THEN
+      IF u.language_code = 'ru' THEN
+        vMessage := format('Здравствуйте, Вас приветствует бот %s!', r.full_name);
       ELSE
-        vMessage := 'Please enter one or more Bitcoin addresses.';
+        vMessage := format('Hello, you are welcomed by a bot %s!', r.full_name);
       END IF;
 
-      IF array_length(vParam, 1) > 1 THEN
-        vMessage := bot.command_add(vParam[2:], f.language_code, to_timestamp(b.update_id));
-      END IF;
-    ELSE
-      vMessage := bot.command_add(string_to_array(replace(m.text, E'\n', ' '), ' '), f.language_code, to_timestamp(b.update_id));
-    END IF;
-  WHEN '/delete' THEN
-    IF isCommand THEN
-      IF f.language_code = 'ru' THEN
-        vMessage := 'Введите, пожалуйста, один или несколько Bitcoin адресов.';
+      IF u.language_code = 'ru' THEN
+        PERFORM bot.set_data('help', '/help', 'Помощь', null, to_timestamp(b.update_id));
+        PERFORM bot.set_data('help', '/add', 'Добавить Bitcoin адрес', null, to_timestamp(b.update_id));
+        PERFORM bot.set_data('help', '/delete', 'Удалить Bitcoin адрес', null, to_timestamp(b.update_id));
+        PERFORM bot.set_data('help', '/list', 'Список адресов', null, to_timestamp(b.update_id));
+        PERFORM bot.set_data('help', '/check', 'Проверить баланс сейчас', null, to_timestamp(b.update_id));
+        PERFORM bot.set_data('help', '/settings', 'Настройки', null, to_timestamp(b.update_id));
       ELSE
-        vMessage := 'Please enter one or more Bitcoin addresses.';
+        PERFORM bot.set_data('help', '/help', 'Help', null, to_timestamp(b.update_id));
+        PERFORM bot.set_data('help', '/add', 'Add Bitcoin address', null, to_timestamp(b.update_id));
+        PERFORM bot.set_data('help', '/delete', 'Delete Bitcoin address', null, to_timestamp(b.update_id));
+        PERFORM bot.set_data('help', '/list', 'List addresses', null, to_timestamp(b.update_id));
+        PERFORM bot.set_data('help', '/check', 'Check balance now', null, to_timestamp(b.update_id));
+        PERFORM bot.set_data('help', '/settings', 'Settings', null, to_timestamp(b.update_id));
       END IF;
 
-      IF array_length(vParam, 1) > 1 THEN
-        vMessage := bot.command_delete(vParam[2:], f.language_code);
-      END IF;
-    ELSE
-      vMessage := bot.command_delete(string_to_array(replace(m.text, E'\n', ' '), ' '), f.language_code);
-    END IF;
-  WHEN '/list' THEN
-    IF isCommand THEN
-      vMessage := bot.command_list(f.language_code);
-    END IF;
-  WHEN '/check' THEN
-    IF isCommand THEN
-      vMessage := bot.command_check(f.language_code);
-    END IF;
-  WHEN '/settings' THEN
-    IF isCommand THEN
-      IF f.language_code = 'ru' THEN
-        vMessage := E'Введите одно или несколько настроек в формате:\r\n<pre>ключ=значение</pre>';
-        vMessage := concat(vMessage, E'\r\n\r\nТекущие настройки:\r\n\r\n');
+      PERFORM bot.set_data('settings', 'interval', '60', jsonb_build_object('interval', 60), to_timestamp(b.update_id));
+    WHEN '/help' THEN
+      vMessage := bot.command_help(u.language_code);
+    WHEN '/add' THEN
+      IF isCommand THEN
+        IF u.language_code = 'ru' THEN
+          vMessage := 'Введите, пожалуйста, один или несколько Bitcoin адресов.';
+        ELSE
+          vMessage := 'Please enter one or more Bitcoin addresses.';
+        END IF;
+
+        IF array_length(vParam, 1) > 1 THEN
+          vMessage := bot.command_add(vParam[2:], u.language_code, to_timestamp(b.update_id));
+        END IF;
       ELSE
-        vMessage := 'Enter one or more settings in the format:\r\n<pre>key=value</pre>';
-        vMessage := concat(vMessage, E'\r\n\r\nCurrent settings:\r\n\r\n');
+        vMessage := bot.command_add(string_to_array(replace(m.text, E'\n', ' '), ' '), u.language_code, to_timestamp(b.update_id));
       END IF;
-      vMessage := concat(vMessage, bot.command_settings(null, f.language_code));
+    WHEN '/delete' THEN
+      IF isCommand THEN
+        IF u.language_code = 'ru' THEN
+          vMessage := 'Введите, пожалуйста, один или несколько Bitcoin адресов.';
+        ELSE
+          vMessage := 'Please enter one or more Bitcoin addresses.';
+        END IF;
+
+        IF array_length(vParam, 1) > 1 THEN
+          vMessage := bot.command_delete(vParam[2:], u.language_code);
+        END IF;
+      ELSE
+        vMessage := bot.command_delete(string_to_array(replace(m.text, E'\n', ' '), ' '), u.language_code);
+      END IF;
+    WHEN '/list' THEN
+      IF isCommand THEN
+        vMessage := bot.command_list(u.language_code);
+      END IF;
+    WHEN '/check' THEN
+      IF isCommand THEN
+        vMessage := bot.command_check(u.language_code);
+      END IF;
+    WHEN '/settings' THEN
+      IF isCommand THEN
+        IF u.language_code = 'ru' THEN
+          vMessage := E'Введите одно или несколько настроек в формате:\r\n<pre>ключ=значение</pre>';
+          vMessage := concat(vMessage, E'\r\n\r\nТекущие настройки:\r\n\r\n');
+        ELSE
+          vMessage := 'Enter one or more settings in the format:\r\n<pre>key=value</pre>';
+          vMessage := concat(vMessage, E'\r\n\r\nCurrent settings:\r\n\r\n');
+        END IF;
+        vMessage := concat(vMessage, bot.command_settings(null, u.language_code));
+      ELSE
+        vMessage := bot.command_settings(string_to_array(m.text, E'\n'), u.language_code);
+      END IF;
     ELSE
-      vMessage := bot.command_settings(string_to_array(m.text, E'\n'), f.language_code);
-    END IF;
-  ELSE
-    IF f.language_code = 'ru' THEN
-      vMessage := 'Неизвестная команда.';
-    ELSE
-      vMessage := 'Unknown command.';
-    END IF;
-  END CASE;
+      IF u.language_code = 'ru' THEN
+        vMessage := 'Неизвестная команда.';
+      ELSE
+        vMessage := 'Unknown command.';
+      END IF;
+    END CASE;
+
+  END IF;
 
   IF vMessage IS NOT NULL THEN
     PERFORM tg.send_message(r.id, c.id, vMessage, 'HTML');
@@ -233,9 +258,9 @@ CREATE OR REPLACE FUNCTION bot.BitcoinBalanceDetectorBot_heartbeat (
 AS $$
 DECLARE
   r             record;
-  u             record;
-  e             record;
+  d             record;
 
+  count         int;
   i             interval;
 
   address       text;
@@ -243,40 +268,37 @@ DECLARE
   vMessage      text;
   vContext      text;
 BEGIN
-  SELECT * INTO r FROM bot.list WHERE id = pBotId;
-
-  IF NOT FOUND THEN
-    RETURN;
-  END IF;
-
-  FOR u IN SELECT bot_id, chat_id, user_id FROM bot.data GROUP BY bot_id, chat_id, user_id
+  FOR d IN SELECT bot_id, chat_id, user_id FROM bot.data WHERE bot_id = pBotId GROUP BY bot_id, chat_id, user_id
   LOOP
-    address := null;
-
     SELECT make_interval(secs => value::int) INTO i
       FROM bot.data
-     WHERE bot_id = u.bot_id
-       AND chat_id = u.chat_id
+     WHERE bot_id = d.bot_id
+       AND chat_id = d.chat_id
+       AND user_id = d.user_id
        AND category = 'settings'
-       AND key = 'interval'
-       AND user_id = u.user_id;
+       AND key = 'interval';
 
     i := coalesce(i, INTERVAL '1 min');
+    count := 0;
 
-    FOR e IN
-      SELECT key, updated
+    FOR r IN
+      SELECT key
         FROM bot.data
-       WHERE bot_id = u.bot_id
-         AND chat_id = u.chat_id
-         AND user_id = u.user_id
+       WHERE bot_id = d.bot_id
+         AND chat_id = d.chat_id
+         AND user_id = d.user_id
          AND category = 'address'
-         AND (Now() - updated) >= i
+         AND updated + i <= Now()
+       ORDER BY updated
     LOOP
-      address := coalesce(address || '|', '') || e.key;
+      address := coalesce(address || '|', '') || r.key;
+      count := count + 1;
+      EXIT WHEN count >= 50;
     END LOOP;
 
     IF address IS NOT NULL THEN
-      PERFORM http.fetch(format('https://blockchain.info/multiaddr?active=%s&n=0', address), 'GET', null, null, 'bot.blockchain_done', 'bot.blockchain_fail', 'blockchain', u.user_id::text, 'multiaddr');
+      PERFORM http.fetch(format('https://blockchain.info/multiaddr?active=%s&n=0', address), 'GET', null, null, 'bot.blockchain_done', 'bot.blockchain_fail', 'blockchain', pBotId::text, 'multiaddr');
+      RETURN; -- one circle - one user
     END IF;
   END LOOP;
 EXCEPTION

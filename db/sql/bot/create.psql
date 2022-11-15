@@ -4,4 +4,5 @@
 \ir routine.sql
 
 \ir './log/create.psql'
+\ir './file/create.psql'
 \ir './BitcoinBalanceChecker/create.psql'
