@@ -122,9 +122,9 @@ BEGIN
   IF m.document IS NOT NULL THEN
     IF f.mime_type = 'text/csv' THEN
       IF u.language_code = 'ru' THEN
-        vMessage := format('Файл "%s" принят.', f.file_name);
+        vMessage := format('Загрузка файла: "%s".', f.file_name);
       ELSE
-        vMessage := format('File "%s" was accepted.', f.file_name);
+        vMessage := format('Downloading file: "%s".', f.file_name);
       END IF;
 
       PERFORM bot.new_file(f.file_id, r.id, c.id, u.id, f.file_name, '/', f.file_size, Now(), null, null, f.file_unique_id, f.mime_type);
@@ -153,29 +153,13 @@ BEGIN
 
     CASE vCommand
     WHEN '/start' THEN
-      IF u.language_code = 'ru' THEN
-        vMessage := format('Здравствуйте, Вас приветствует бот %s!', r.full_name);
+        IF u.language_code = 'ru' THEN
+	    vMessage := format('Здравствуйте, Вас приветствует бот %s!', r.full_name);
       ELSE
-        vMessage := format('Hello, you are welcomed by a bot %s!', r.full_name);
+	    vMessage := format('Hello, you are welcomed by a bot %s!', r.full_name);
       END IF;
 
-      IF u.language_code = 'ru' THEN
-        PERFORM bot.set_data('help', '/help', 'Помощь', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/add', 'Добавить Bitcoin адрес', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/delete', 'Удалить Bitcoin адрес', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/list', 'Список адресов', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/check', 'Проверить баланс сейчас', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/settings', 'Настройки', null, to_timestamp(b.update_id));
-      ELSE
-        PERFORM bot.set_data('help', '/help', 'Help', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/add', 'Add Bitcoin address', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/delete', 'Delete Bitcoin address', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/list', 'List addresses', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/check', 'Check balance now', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/settings', 'Settings', null, to_timestamp(b.update_id));
-      END IF;
-
-      PERFORM bot.set_data('settings', 'interval', '60', jsonb_build_object('interval', 60), to_timestamp(b.update_id));
+      PERFORM bot.command_start(u.language_code, to_timestamp(b.update_id));
     WHEN '/help' THEN
       vMessage := bot.command_help(u.language_code);
     WHEN '/add' THEN

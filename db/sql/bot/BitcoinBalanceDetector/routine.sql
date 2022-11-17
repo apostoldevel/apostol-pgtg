@@ -37,9 +37,9 @@ BEGIN
   IF m.document IS NOT NULL THEN
     IF f.mime_type = 'text/csv' THEN
       IF u.language_code = 'ru' THEN
-        vMessage := format('Файл "%s" принят.', f.file_name);
+        vMessage := format('Загрузка файла: "%s".', f.file_name);
       ELSE
-        vMessage := format('File "%s" was accepted.', f.file_name);
+        vMessage := format('Downloading file: "%s".', f.file_name);
       END IF;
 
       PERFORM bot.new_file(f.file_id, r.id, c.id, u.id, f.file_name, '/', f.file_size, Now(), null, null, f.file_unique_id, f.mime_type);
@@ -68,29 +68,13 @@ BEGIN
 
     CASE vCommand
     WHEN '/start' THEN
-      IF u.language_code = 'ru' THEN
-        vMessage := format('Здравствуйте, Вас приветствует бот %s!', r.full_name);
+        IF u.language_code = 'ru' THEN
+	    vMessage := format('Здравствуйте, Вас приветствует бот %s!', r.full_name);
       ELSE
-        vMessage := format('Hello, you are welcomed by a bot %s!', r.full_name);
+	    vMessage := format('Hello, you are welcomed by a bot %s!', r.full_name);
       END IF;
 
-      IF u.language_code = 'ru' THEN
-        PERFORM bot.set_data('help', '/help', 'Помощь', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/add', 'Добавить Bitcoin адрес', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/delete', 'Удалить Bitcoin адрес', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/list', 'Список адресов', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/check', 'Проверить баланс сейчас', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/settings', 'Настройки', null, to_timestamp(b.update_id));
-      ELSE
-        PERFORM bot.set_data('help', '/help', 'Help', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/add', 'Add Bitcoin address', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/delete', 'Delete Bitcoin address', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/list', 'List addresses', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/check', 'Check balance now', null, to_timestamp(b.update_id));
-        PERFORM bot.set_data('help', '/settings', 'Settings', null, to_timestamp(b.update_id));
-      END IF;
-
-      PERFORM bot.set_data('settings', 'interval', '60', jsonb_build_object('interval', 60), to_timestamp(b.update_id));
+      PERFORM bot.command_start(u.language_code, to_timestamp(b.update_id));
     WHEN '/help' THEN
       vMessage := bot.command_help(u.language_code);
     WHEN '/add' THEN
@@ -342,13 +326,16 @@ DECLARE
   r             record;
   f             record;
   e             record;
+  b             record;
+
+  count         int;
 
   uBotId        uuid;
+  vFileId       text;
 
   reply         jsonb;
 
   vLanguageCode text;
-
   vMessage      text;
   vContext      text;
 BEGIN
@@ -377,8 +364,27 @@ BEGIN
 
     ELSIF r.agent = 'telegram' AND r.command = 'file_path' THEN
 
-      PERFORM bot.update_file(r.message, pdata => r.response::bytea);
+      vFileId := r.message;
+      PERFORM bot.update_file(vFileId, pdata => r.response::bytea);
 
+      SELECT bot_id, chat_id, user_id INTO b FROM bot.file WHERE file_id = vFileId;
+      PERFORM bot.context(uBotId, b.chat_id, b.user_id, '/parse');
+
+      BEGIN
+        count := bot.parse_file(vFileId);
+
+        IF vLanguageCode = 'ru' THEN
+          vMessage := format('Обработано <b>%s</b> строк.', count);
+	    ELSE
+          vMessage := format('Processed <b>%s</b> rows.', count);
+	    END IF;
+      EXCEPTION
+      WHEN others THEN
+        GET STACKED DIAGNOSTICS vMessage = MESSAGE_TEXT, vContext = PG_EXCEPTION_CONTEXT;
+        PERFORM WriteDiagnostics(vMessage, vContext);
+      END;
+
+      PERFORM tg.send_message(b.bot_id, b.chat_id, vMessage, 'HTML');
     END IF;
 
   ELSE
@@ -480,6 +486,42 @@ $$ LANGUAGE plpgsql
   SET search_path = bot, pg_temp;
 
 --------------------------------------------------------------------------------
+-- FUNCTION command_start ------------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION bot.command_start (
+  pLanguage text DEFAULT null,
+  pUpdated  timestamptz DEFAULT null
+) RETURNS   void
+AS $$
+BEGIN
+  pLanguage := coalesce(pLanguage, 'en');
+  pUpdated := coalesce(pUpdated, Now());
+
+  IF pLanguage = 'ru' THEN
+	PERFORM bot.set_data('help', '/help', 'Помощь', null, pUpdated);
+	PERFORM bot.set_data('help', '/add', 'Добавить Bitcoin адрес', null, pUpdated);
+	PERFORM bot.set_data('help', '/delete', 'Удалить Bitcoin адрес', null, pUpdated);
+	PERFORM bot.set_data('help', '/list', 'Список адресов', null, pUpdated);
+	PERFORM bot.set_data('help', '/check', 'Проверить баланс сейчас', null, pUpdated);
+	PERFORM bot.set_data('help', '/settings', 'Настройки', null, pUpdated);
+  ELSE
+	PERFORM bot.set_data('help', '/help', 'Help', null, pUpdated);
+	PERFORM bot.set_data('help', '/add', 'Add Bitcoin address', null, pUpdated);
+	PERFORM bot.set_data('help', '/delete', 'Delete Bitcoin address', null, pUpdated);
+	PERFORM bot.set_data('help', '/list', 'List addresses', null, pUpdated);
+	PERFORM bot.set_data('help', '/check', 'Check balance now', null, pUpdated);
+	PERFORM bot.set_data('help', '/settings', 'Settings', null, pUpdated);
+  END IF;
+
+  PERFORM bot.set_data('settings', 'interval', '60', jsonb_build_object('interval', 60), pUpdated);
+  PERFORM bot.set_data('settings', 'encoding', 'UTF-8', jsonb_build_object('encoding', 'UTF-8'), pUpdated);
+END
+$$ LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = bot, pg_temp;
+
+--------------------------------------------------------------------------------
 -- FUNCTION command_help -------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -493,7 +535,11 @@ DECLARE
   vMessage  text;
 BEGIN
   pLanguage := coalesce(pLanguage, 'en');
-  count := 0;
+
+  SELECT Sum(key) INTO count FROM get_data('help');
+  IF count = 0 THEN
+    PERFORM bot.command_start(pLanguage);
+  END IF;
 
   FOR r IN SELECT * FROM get_data('help')
   LOOP
@@ -690,7 +736,7 @@ BEGIN
 
     FOR r IN SELECT * FROM get_data('settings')
     LOOP
-      vMessage := concat(coalesce(vMessage || E'\r\n\r\n', '<pre>'), r.key, '=', r.value);
+      vMessage := concat(coalesce(vMessage || E'\r\n', '<pre>'), r.key, '=', r.value);
       count := count + 1;
     END LOOP;
 
@@ -731,6 +777,53 @@ BEGIN
   END IF;
 
   RETURN vMessage;
+END
+$$ LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = bot, pg_temp;
+
+--------------------------------------------------------------------------------
+-- FUNCTION parse_file ---------------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION bot.parse_file (
+  pFileId       text
+) RETURNS       int
+AS $$
+DECLARE
+  f             record;
+  r             record;
+  c             record;
+
+  arValues      text[];
+
+  encoding      text;
+  count         int DEFAULT 0;
+BEGIN
+  SELECT value INTO encoding FROM bot.get_data('settings', 'encoding');
+
+  arValues := array_cat(null, ARRAY['#', 'address', 'count', 'received', 'sent', 'balance', 'description']);
+
+  FOR f IN SELECT convert_from(file_data, 'UTF-8') AS data FROM bot.file WHERE file_id = pFileId
+  LOOP
+    FOR r IN SELECT * FROM string_to_table(f.data, E'\n') AS line
+    LOOP
+      FOR c IN SELECT * FROM string_to_table(r.line, E';') AS data
+      LOOP
+        IF count = 0 THEN
+          IF NOT c.data = ANY (arValues) THEN
+            RAISE EXCEPTION 'Invalid value "%" in header. Valid values: [%]', c.data, arValues;
+          END IF;
+        ELSE
+
+		END IF;
+      END LOOP;
+
+      count := count + 1;
+    END LOOP;
+  END LOOP;
+
+  RETURN count;
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
