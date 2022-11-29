@@ -13,7 +13,7 @@ CREATE TABLE bot.list (
   full_name     text NOT NULL,
   secret        text,
   language_code text DEFAULT 'en',
-  created       timestamptz DEFAULT clock_timestamp() NOT NULL,
+  created       timestamptz NOT NULL DEFAULT Now(),
   downtime      timestamptz NOT NULL DEFAULT Now()
 );
 

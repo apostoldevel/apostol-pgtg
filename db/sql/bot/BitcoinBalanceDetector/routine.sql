@@ -61,7 +61,7 @@ BEGIN
       vParam := string_to_array(m.text, ' ');
       vCommand := vParam[1];
     ELSE
-      SELECT command INTO vCommand FROM bot.context WHERE pBotId = pBotId AND chat_id = c.id AND user_id = u.id;
+      SELECT command INTO vCommand FROM bot.context WHERE bot_id = pBotId AND chat_id = c.id AND user_id = u.id;
     END IF;
 
     PERFORM bot.context(r.id, c.id, u.id, vCommand, m.text, b.message, to_timestamp(b.update_id));
@@ -204,7 +204,7 @@ WHEN others THEN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- bot.blockchain_done ---------------------------------------------------------
@@ -262,7 +262,12 @@ BEGIN
           PERFORM bot.set_data('address', e.address, vNew, row_to_json(e)::jsonb, Now(), d.user_id, d.chat_id, d.bot_id);
 
           IF encode(digest(vOld, 'md5'), 'hex') != encode(digest(vNew, 'md5'), 'hex') THEN
-            vMessage := concat(vMessage, E'\r\n\r\n<pre>', e.address, E'\r\n', vOld, E'\r\n', vNew, '</pre>');
+            IF vOld = 'Not data' THEN
+              vMessage := concat(vMessage, E'\r\n\r\n<pre>', e.address, E'\r\n', vNew, '</pre>');
+			ELSE
+              vMessage := concat(vMessage, E'\r\n\r\n<pre>', e.address, E'\r\n', vOld, E'\r\n', vNew, '</pre>');
+			END IF;
+
             PERFORM tg.send_message(d.bot_id, d.user_id, vMessage, 'HTML');
           END IF;
         END LOOP;
@@ -289,7 +294,7 @@ WHEN others THEN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- bot.blockchain_fail ---------------------------------------------------------
@@ -312,7 +317,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- bot.get_file_done -----------------------------------------------------------
@@ -399,7 +404,7 @@ WHEN others THEN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- bot.get_file_fail -----------------------------------------------------------
@@ -420,7 +425,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- BITCOIN FUNCTION ------------------------------------------------------------
@@ -446,7 +451,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- FUNCTION IsSegWitAddress ----------------------------------------------------
@@ -468,7 +473,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- FUNCTION IsBitcoinAddress ---------------------------------------------------
@@ -483,7 +488,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- FUNCTION command_start ------------------------------------------------------
@@ -519,7 +524,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- FUNCTION command_help -------------------------------------------------------
@@ -559,7 +564,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- FUNCTION command_add --------------------------------------------------------
@@ -592,7 +597,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- FUNCTION command_delete -----------------------------------------------------
@@ -626,7 +631,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- FUNCTION command_list -------------------------------------------------------
@@ -664,7 +669,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- FUNCTION command_check ------------------------------------------------------
@@ -710,7 +715,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- FUNCTION command_settings ---------------------------------------------------
@@ -780,7 +785,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 -- FUNCTION parse_file ---------------------------------------------------------
@@ -827,4 +832,4 @@ BEGIN
 END
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = bot, pg_temp;
+  SET search_path = bot, public, pg_temp;
