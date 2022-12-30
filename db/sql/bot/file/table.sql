@@ -49,7 +49,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql
    SECURITY DEFINER
-   SET search_path = bot, pg_temp;
+   SET search_path = bot, public, pg_temp;
 
 --------------------------------------------------------------------------------
 

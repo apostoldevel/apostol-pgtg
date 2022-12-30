@@ -128,10 +128,10 @@ $$ LANGUAGE plpgsql
 --------------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION bot.current_chat_id()
-RETURNS		int
+RETURNS		bigint
 AS $$
 BEGIN
-  RETURN GetVar('context', 'chat_id')::int;
+  RETURN GetVar('context', 'chat_id')::bigint;
 END
 $$ LANGUAGE plpgsql
    SECURITY DEFINER
@@ -142,10 +142,10 @@ $$ LANGUAGE plpgsql
 --------------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION bot.current_user_id()
-RETURNS		int
+RETURNS		bigint
 AS $$
 BEGIN
-  RETURN GetVar('context', 'user_id')::int;
+  RETURN GetVar('context', 'user_id')::bigint;
 END
 $$ LANGUAGE plpgsql
    SECURITY DEFINER
@@ -313,19 +313,19 @@ $$ LANGUAGE plpgsql
 
 CREATE OR REPLACE FUNCTION bot.context (
   pBotId        uuid,
-  pChatId       int,
-  pUserId       int,
+  pChatId       bigint,
+  pUserId       bigint,
   pCommand      text,
   pText         text,
-  pMessage      jsonb,
+  pData         jsonb,
   pUpdated      timestamptz
 ) RETURNS       void
 AS $$
 BEGIN
-  INSERT INTO bot.context (bot_id, chat_id, user_id, command, text, message, updated)
-  VALUES (pBotId, pChatId, pUserId, pCommand, pText, pMessage, coalesce(pUpdated, Now()))
+  INSERT INTO bot.context (bot_id, chat_id, user_id, command, text, data, updated)
+  VALUES (pBotId, pChatId, pUserId, pCommand, pText, pData, coalesce(pUpdated, Now()))
   ON CONFLICT (bot_id, chat_id, user_id)
-  DO UPDATE SET command = pCommand, text = pText, message = pMessage, updated = coalesce(pUpdated, Now());
+  DO UPDATE SET command = pCommand, text = pText, data = pData, updated = coalesce(pUpdated, Now());
 
   PERFORM SetVar('context', 'bot_id', pBotId);
   PERFORM SetVar('context', 'chat_id', pChatId);
@@ -342,8 +342,8 @@ $$ LANGUAGE plpgsql
 
 CREATE OR REPLACE FUNCTION bot.data (
   pBotId        uuid,
-  pChatId       int,
-  pUserId       int,
+  pChatId       bigint,
+  pUserId       bigint,
   pCategory     text,
   pKey          text,
   pValue        text,
@@ -371,8 +371,8 @@ CREATE OR REPLACE FUNCTION bot.set_data (
   pValue        text,
   pData         jsonb DEFAULT null,
   pUpdated      timestamptz DEFAULT null,
-  pUserId       int DEFAULT bot.current_user_id(),
-  pChatId       int DEFAULT bot.current_chat_id(),
+  pUserId       bigint DEFAULT bot.current_user_id(),
+  pChatId       bigint DEFAULT bot.current_chat_id(),
   pBotId        uuid DEFAULT bot.current_bot_id()
 ) RETURNS       void
 AS $$
@@ -390,8 +390,8 @@ $$ LANGUAGE plpgsql
 CREATE OR REPLACE FUNCTION bot.get_data (
   pCategory     text,
   pKey          text DEFAULT null,
-  pUserId       int DEFAULT bot.current_user_id(),
-  pChatId       int DEFAULT bot.current_chat_id(),
+  pUserId       bigint DEFAULT bot.current_user_id(),
+  pChatId       bigint DEFAULT bot.current_chat_id(),
   pBotId        uuid DEFAULT bot.current_bot_id(),
   OUT key       text,
   OUT value     text,
@@ -420,8 +420,8 @@ $$ LANGUAGE plpgsql
 CREATE OR REPLACE FUNCTION bot.delete_data (
   pCategory     text,
   pKey          text DEFAULT null,
-  pUserId       int DEFAULT bot.current_user_id(),
-  pChatId       int DEFAULT bot.current_chat_id(),
+  pUserId       bigint DEFAULT bot.current_user_id(),
+  pChatId       bigint DEFAULT bot.current_chat_id(),
   pBotId        uuid DEFAULT bot.current_bot_id()
 ) RETURNS       bool
 AS $$

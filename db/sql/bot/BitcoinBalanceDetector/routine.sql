@@ -156,7 +156,6 @@ DECLARE
   r             record;
   d             record;
 
-  count         int;
   i             interval;
 
   address       text;
@@ -164,8 +163,15 @@ DECLARE
   vMessage      text;
   vContext      text;
 BEGIN
-  FOR d IN SELECT bot_id, chat_id, user_id FROM bot.data WHERE bot_id = pBotId GROUP BY bot_id, chat_id, user_id
+  FOR d IN
+    SELECT bot_id, chat_id, user_id
+      FROM bot.data td INNER JOIN bot.list tl ON td.bot_id = tl.id AND tl.downtime < Now()
+     WHERE bot_id = pBotId
+     GROUP BY bot_id, chat_id, user_id
+     ORDER BY bot_id, chat_id, user_id
   LOOP
+    UPDATE bot.list SET downtime = Now() + INTERVAL '10 sec' WHERE id = d.bot_id;
+
     SELECT make_interval(secs => value::int) INTO i
       FROM bot.data
      WHERE bot_id = d.bot_id
@@ -175,7 +181,6 @@ BEGIN
        AND key = 'interval';
 
     i := coalesce(i, INTERVAL '1 min');
-    count := 0;
 
     FOR r IN
       SELECT key
@@ -186,15 +191,22 @@ BEGIN
          AND category = 'address'
          AND updated + i <= Now()
        ORDER BY updated
+       LIMIT 50
     LOOP
+      UPDATE bot.data
+         SET updated = Now()
+       WHERE bot_id = d.bot_id
+         AND chat_id = d.chat_id
+         AND user_id = d.user_id
+         AND category = 'address'
+         AND key = r.key;
+
       address := coalesce(address || '|', '') || r.key;
-      count := count + 1;
-      EXIT WHEN count >= 50;
     END LOOP;
 
     IF address IS NOT NULL THEN
       PERFORM http.fetch(format('https://blockchain.info/multiaddr?active=%s&n=0', address), 'GET', null, null, 'bot.blockchain_done', 'bot.blockchain_fail', 'blockchain', pBotId::text, 'multiaddr');
-      RETURN; -- one circle - one user
+      EXIT WHEN true; -- one circle - one user
     END IF;
   END LOOP;
 EXCEPTION
@@ -370,7 +382,7 @@ BEGIN
     ELSIF r.agent = 'telegram' AND r.command = 'file_path' THEN
 
       vFileId := r.message;
-      PERFORM bot.update_file(vFileId, pdata => r.response::bytea);
+      PERFORM bot.update_file(vFileId, pdata => convert_to(r.response, 'UTF-8'));
 
       SELECT bot_id, chat_id, user_id INTO b FROM bot.file WHERE file_id = vFileId;
       PERFORM bot.context(uBotId, b.chat_id, b.user_id, '/parse');
@@ -657,9 +669,9 @@ BEGIN
 
   IF count = 0 THEN
     IF pLanguage = 'ru' THEN
-      vMessage := 'Список пуст.';
+      vMessage := 'Не найдено.';
     ELSE
-      vMessage := 'The list is empty.';
+      vMessage := 'Not found.';
     END IF;
   ELSE
     vMessage := vMessage || '</pre>';
@@ -705,9 +717,9 @@ BEGIN
 
   IF vMessage IS NULL THEN
     IF pLanguage = 'ru' THEN
-      vMessage := 'Список пуст.';
+      vMessage := 'Не найдено.';
     ELSE
-      vMessage := 'The list is empty.';
+      vMessage := 'Not found.';
     END IF;
   END IF;
 
