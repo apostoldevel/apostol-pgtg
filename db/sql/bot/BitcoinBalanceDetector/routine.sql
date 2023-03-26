@@ -284,6 +284,9 @@ BEGIN
           END IF;
         END LOOP;
       END LOOP;
+
+      DELETE FROM http.response WHERE request = pRequest;
+      DELETE FROM http.request WHERE id = pRequest;
     END IF;
 
   ELSIF coalesce(r.status, 500) = 500 THEN
