@@ -43,7 +43,7 @@ BEGIN
       END IF;
 
       PERFORM bot.new_file(f.file_id, r.id, c.id, u.id, f.file_name, '/', f.file_size, Now(), null, null, f.file_unique_id, f.mime_type);
-      PERFORM tg.get_file(r.id, f.file_id);
+      PERFORM tg.get_file(r.id, f.file_id, 'bot.get_file_done', 'bot.get_file_fail');
     ELSE
       IF u.language_code = 'ru' THEN
         vMessage := format('Неверный тип файла: %s', f.mime_type);
@@ -379,7 +379,7 @@ BEGIN
       FOR e IN SELECT * FROM jsonb_to_record(f.result) AS x(file_id text, file_unique_id text, file_size int, file_path text)
       LOOP
         PERFORM bot.update_file(e.file_id, psize => e.file_size, plink => e.file_path);
-        PERFORM tg.file_path(uBotId, e.file_id, e.file_path);
+        PERFORM tg.file_path(uBotId, e.file_id, e.file_path, 'bot.get_file_done', 'bot.get_file_fail');
       END LOOP;
 
     ELSIF r.agent = 'telegram' AND r.command = 'file_path' THEN
@@ -388,7 +388,7 @@ BEGIN
       PERFORM bot.update_file(vFileId, pdata => convert_to(r.response, 'UTF-8'));
 
       SELECT bot_id, chat_id, user_id INTO b FROM bot.file WHERE file_id = vFileId;
-      PERFORM bot.context(uBotId, b.chat_id, b.user_id, '/parse');
+      PERFORM bot.context(uBotId, b.chat_id, b.user_id, '/parse', null, null, Now());
 
       BEGIN
         count := bot.parse_file(vFileId);
