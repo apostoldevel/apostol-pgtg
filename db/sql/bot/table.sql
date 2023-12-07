@@ -36,11 +36,12 @@ CREATE INDEX ON bot.list (downtime);
 
 CREATE TABLE bot.context (
   bot_id        uuid REFERENCES bot.list ON DELETE CASCADE,
-  chat_id       int NOT NULL,
-  user_id       int NOT NULL,
+  chat_id       bigint NOT NULL,
+  user_id       bigint NOT NULL,
   command       text NOT NULL,
   text          text,
-  message       jsonb,
+  data          jsonb,
+  premium       bool DEFAULT false NOT NULL,
   updated       timestamptz NOT NULL DEFAULT Now(),
   PRIMARY KEY (bot_id, chat_id, user_id)
 );
@@ -51,11 +52,13 @@ COMMENT ON COLUMN bot.context.bot_id IS 'Bot ID';
 COMMENT ON COLUMN bot.context.chat_id IS 'Char ID';
 COMMENT ON COLUMN bot.context.user_id IS 'User ID';
 COMMENT ON COLUMN bot.context.command IS 'Current command';
-COMMENT ON COLUMN bot.context.text IS 'Message text';
-COMMENT ON COLUMN bot.context.message IS 'Message data';
+COMMENT ON COLUMN bot.context.text IS 'Text';
+COMMENT ON COLUMN bot.context.data IS 'Data';
+COMMENT ON COLUMN bot.context.premium IS 'Premium user_id';
 COMMENT ON COLUMN bot.context.updated IS 'Last updated';
 
 CREATE INDEX ON bot.context (bot_id);
+CREATE INDEX ON bot.context (premium);
 
 --------------------------------------------------------------------------------
 -- bot.data --------------------------------------------------------------------
@@ -63,8 +66,8 @@ CREATE INDEX ON bot.context (bot_id);
 
 CREATE TABLE bot.data (
   bot_id        uuid REFERENCES bot.list ON DELETE CASCADE,
-  chat_id       int NOT NULL,
-  user_id       int NOT NULL,
+  chat_id       bigint NOT NULL,
+  user_id       bigint NOT NULL,
   category      text NOT NULL,
   key           text NOT NULL,
   value         text NOT NULL,
@@ -86,5 +89,38 @@ COMMENT ON COLUMN bot.data.updated IS 'Last updated';
 
 CREATE INDEX ON bot.data (bot_id, chat_id, user_id, category);
 CREATE INDEX ON bot.data (bot_id);
+CREATE INDEX ON bot.data (user_id);
 CREATE INDEX ON bot.data (category);
 CREATE INDEX ON bot.data (key);
+
+--------------------------------------------------------------------------------
+-- bot.chat --------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE TABLE bot.chat (
+  bot_id        uuid REFERENCES bot.list ON DELETE CASCADE,
+  chat_id       bigint NOT NULL,
+  user_id       bigint NOT NULL,
+  message_id    bigint NOT NULL,
+  role          text NOT NULL,
+  content       text NOT NULL,
+  cost          numeric(12,0) DEFAULT 0 NOT NULL,
+  datetime      timestamptz NOT NULL,
+  PRIMARY KEY (bot_id, chat_id, message_id)
+);
+
+COMMENT ON TABLE bot.chat IS 'Bot chat.';
+
+COMMENT ON COLUMN bot.chat.bot_id IS 'Bot ID';
+COMMENT ON COLUMN bot.chat.chat_id IS 'Char ID';
+COMMENT ON COLUMN bot.chat.user_id IS 'User ID';
+COMMENT ON COLUMN bot.chat.message_id IS 'Message ID';
+COMMENT ON COLUMN bot.chat.role IS 'Role';
+COMMENT ON COLUMN bot.chat.content IS 'Content';
+COMMENT ON COLUMN bot.chat.cost IS 'Cost in tokens';
+COMMENT ON COLUMN bot.chat.datetime IS 'Date and time';
+
+CREATE INDEX ON bot.chat (bot_id, chat_id, user_id, role);
+CREATE INDEX ON bot.chat (bot_id, chat_id, role);
+CREATE INDEX ON bot.chat (bot_id);
+CREATE INDEX ON bot.chat (datetime);

@@ -438,3 +438,179 @@ END;
 $$ LANGUAGE plpgsql
   SECURITY DEFINER
   SET search_path = bot, pg_temp;
+
+--------------------------------------------------------------------------------
+-- FUNCTION bot.message --------------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION bot.message (
+  pBotId        uuid,
+  pChatId       bigint,
+  pUserId       bigint,
+  pMessageId    bigint,
+  pRole         text,
+  pContent      text,
+  pCost         numeric,
+  pDatetime     timestamptz
+) RETURNS       void
+AS $$
+BEGIN
+  INSERT INTO bot.chat (bot_id, chat_id, user_id, message_id, role, content, cost, datetime)
+  VALUES (pBotId, pChatId, pUserId, pMessageId, pRole, pContent, pCost, coalesce(pDatetime, Now()));
+END;
+$$ LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = bot, pg_temp;
+
+--------------------------------------------------------------------------------
+-- FUNCTION bot.get_messages ---------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION bot.get_messages (
+  pRole             text,
+  pChatId           bigint DEFAULT bot.current_chat_id(),
+  pBotId            uuid DEFAULT bot.current_bot_id(),
+  OUT message_id    bigint,
+  OUT user_id       bigint,
+  OUT content       text,
+  OUT cost          numeric,
+  OUT datetime      timestamptz
+) RETURNS           SETOF record
+AS $$
+BEGIN
+  RETURN QUERY
+    SELECT t.message_id, t.user_id, t.content, t.cost, t.datetime
+      FROM bot.chat t
+     WHERE t.bot_id = pBotId
+       AND t.chat_id = pChatId
+       AND t.role = pRole
+     ORDER BY message_id DESC;
+END;
+$$ LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = bot, pg_temp;
+
+--------------------------------------------------------------------------------
+-- FUNCTION bot.delete_message -------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION bot.delete_message (
+  pMessageId    bigint,
+  pChatId       bigint DEFAULT bot.current_chat_id(),
+  pBotId        uuid DEFAULT bot.current_bot_id()
+) RETURNS       bool
+AS $$
+BEGIN
+  DELETE FROM bot.chat
+     WHERE bot_id = pBotId
+       AND chat_id = pChatId
+       AND message_id = pMessageId;
+
+  RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = bot, pg_temp;
+
+--------------------------------------------------------------------------------
+-- FUNCTION bot.delete_messages ------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION bot.delete_messages (
+  pRole         text,
+  pUserId       bigint DEFAULT bot.current_user_id(),
+  pChatId       bigint DEFAULT bot.current_chat_id(),
+  pBotId        uuid DEFAULT bot.current_bot_id()
+) RETURNS       bool
+AS $$
+BEGIN
+  DELETE FROM bot.chat
+     WHERE bot_id = pBotId
+       AND chat_id = pChatId
+       AND user_id = pUserId
+       AND role = pRole;
+
+  RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = bot, pg_temp;
+
+--------------------------------------------------------------------------------
+-- FUNCTION bot.min_date -------------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION bot.min_date() RETURNS DATE
+AS $$
+BEGIN
+  RETURN TO_DATE('1970-01-01', 'YYYY-MM-DD');
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+--------------------------------------------------------------------------------
+-- FUNCTION bot.max_date -------------------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION bot.max_date() RETURNS DATE
+AS $$
+BEGIN
+  RETURN TO_DATE('4433-12-31', 'YYYY-MM-DD');
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+--------------------------------------------------------------------------------
+-- FUNCTION bot.encode_json_string ---------------------------------------------
+--------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION bot.encode_json_string(str text) RETURNS text
+AS $$
+DECLARE
+  result    text;
+  ch        text;
+  chr       text;
+  chr_r     text;
+  quote     bool;
+BEGIN
+  quote := false;
+
+  FOR i IN 1..length(str)
+  LOOP
+    chr := substring(str FROM i FOR 1);
+    chr_r := substring(str FROM i + 1 FOR 1);
+
+    IF quote AND chr_r NOT IN (':', '}', ']', ',', E'\n') THEN
+	  CASE chr
+	  WHEN E'\r' THEN
+	    ch := '\r';
+	  WHEN E'\n' THEN
+	    ch := '\n';
+	  WHEN E'\t' THEN
+	    ch := '\t';
+	  WHEN '"' THEN
+	    ch := '\"';
+	  WHEN '\' THEN
+	    ch := '\\"';
+	  ELSE
+	    ch := chr;
+	  END CASE;
+	ELSE
+	  CASE chr
+	  WHEN E'\r' THEN
+	    ch := '';
+	  WHEN E'\n' THEN
+	    ch := '';
+	  ELSE
+	    ch := chr;
+	  END CASE;
+	END IF;
+
+    result := coalesce(result, '') || ch;
+
+    IF ch = '"' THEN
+	  quote := NOT quote;
+    END IF;
+  END LOOP;
+
+  RETURN result;
+END
+$$ LANGUAGE plpgsql STRICT IMMUTABLE;

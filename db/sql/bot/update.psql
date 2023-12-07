@@ -3,4 +3,5 @@
 
 \ir './log/update.psql'
 \ir './file/update.psql'
-\ir './BitcoinBalanceChecker/update.psql'
+\ir './BitcoinBalanceDetector/update.psql'
+\ir './TalkingToAIBot/update.psql'

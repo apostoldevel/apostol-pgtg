@@ -5,8 +5,8 @@
 CREATE TABLE bot.file (
   file_id       text PRIMARY KEY,
   bot_id        uuid REFERENCES bot.list ON DELETE CASCADE,
-  chat_id       int NOT NULL,
-  user_id       int NOT NULL,
+  chat_id       bigint NOT NULL,
+  user_id       bigint NOT NULL,
   file_name     text NOT NULL,
   file_path     text NOT NULL,
   file_size     integer DEFAULT 0,
@@ -49,7 +49,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql
    SECURITY DEFINER
-   SET search_path = bot, public, pg_temp;
+   SET search_path = bot, pg_temp;
 
 --------------------------------------------------------------------------------
 

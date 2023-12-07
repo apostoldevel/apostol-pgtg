@@ -5,8 +5,8 @@
 CREATE OR REPLACE FUNCTION bot.new_file (
   pFileId       text,
   pBotId        uuid,
-  pChatId       int,
-  pUserId       int,
+  pChatId       bigint,
+  pUserId       bigint,
   pName		    text,
   pPath		    text,
   pSize		    integer,
@@ -24,7 +24,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql
    SECURITY DEFINER
-   SET search_path = kernel, pg_temp;
+   SET search_path = bot, pg_temp;
 
 --------------------------------------------------------------------------------
 -- bot.update_file -------------------------------------------------------------
@@ -60,7 +60,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql
    SECURITY DEFINER
-   SET search_path = kernel, pg_temp;
+   SET search_path = bot, pg_temp;
 
 --------------------------------------------------------------------------------
 -- bot.set_file ----------------------------------------------------------------
@@ -69,8 +69,8 @@ $$ LANGUAGE plpgsql
 CREATE OR REPLACE FUNCTION bot.set_file (
   pFileId       text,
   pBotId        uuid DEFAULT null,
-  pChatId       int DEFAULT null,
-  pUserId       int DEFAULT null,
+  pChatId       bigint DEFAULT null,
+  pUserId       bigint DEFAULT null,
   pName		    text DEFAULT null,
   pPath		    text DEFAULT null,
   pSize		    integer DEFAULT null,
@@ -99,7 +99,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql
    SECURITY DEFINER
-   SET search_path = kernel, pg_temp;
+   SET search_path = bot, pg_temp;
 
 --------------------------------------------------------------------------------
 -- bot.delete_file -------------------------------------------------------------
@@ -116,7 +116,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql
    SECURITY DEFINER
-   SET search_path = kernel, pg_temp;
+   SET search_path = bot, pg_temp;
 
 --------------------------------------------------------------------------------
 -- bot.clear_files -------------------------------------------------------------
@@ -124,8 +124,8 @@ $$ LANGUAGE plpgsql
 
 CREATE OR REPLACE FUNCTION bot.clear_files (
   pBotId        uuid,
-  pChatId       int,
-  pUserId       int
+  pChatId       bigint,
+  pUserId       bigint
 ) RETURNS       void
 AS $$
 BEGIN
@@ -136,4 +136,4 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql
    SECURITY DEFINER
-   SET search_path = kernel, pg_temp;
+   SET search_path = bot, pg_temp;

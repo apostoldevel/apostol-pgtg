@@ -5,4 +5,5 @@
 
 \ir './log/create.psql'
 \ir './file/create.psql'
-\ir './BitcoinBalanceChecker/create.psql'
+\ir './BitcoinBalanceDetector/create.psql'
+\ir './TalkingToAIBot/create.psql'

@@ -54,17 +54,16 @@ CREATE OR REPLACE FUNCTION bot.WriteToEventLog (
   pCode		integer,
   pText		text,
   pEvent	text DEFAULT null,
-  pUsername text DEFAULT null
+  pUsername text DEFAULT null,
+  pCategory text DEFAULT null
 ) RETURNS	void
 AS $$
-DECLARE
-  vCategory text;
 BEGIN
   pEvent := coalesce(pEvent, 'bot');
   pUsername := coalesce(pUsername, session_user);
 
   IF pType IN ('M', 'W', 'E', 'D') THEN
-    PERFORM NewEventLog(pType, pUsername, pCode, pEvent, pText, vCategory);
+    PERFORM NewEventLog(pType, pUsername, pCode, pEvent, pText, pCategory);
   END IF;
 
   IF pType = 'D' THEN
