@@ -14,7 +14,7 @@ All messages addressed to your telegram bot through [WebHook](https://core.teleg
 
 All you need to do is to implement a handler function to process messages coming from telegrams, as described below.
 
-**Sequencing**
+Settings
 -
 
 1. Set the [WebHook](https://core.telegram.org/bots/api#setwebhook) in your Telegram bot settings:
@@ -26,7 +26,7 @@ All you need to do is to implement a handler function to process messages coming
          * `you.domain.org` - You domain name;
 
 
-2. Configure [Nginx](https://nginx.org) so that telegram requests are redirected to **pgTG** on port `4980`:
+1. Configure [Nginx](https://nginx.org) so that telegram requests are redirected to **pgTG** on port `4980`:
 
     <details>
       <summary>Example</summary>
@@ -54,17 +54,14 @@ All you need to do is to implement a handler function to process messages coming
       ~~~
     </details> 
 
+1. Build and install **pgTG**.
 
-3. Build and install **pgTG**.
-
-
-4. Connect to the database `pgtg`:
+1. Connect to the database `pgtg`:
    ~~~shell
    sudo -u postgres psql -d pgtg -U http
    ~~~
 
-
-5. Register your bot:
+1. Register your bot:
    ~~~postgresql
    SELECT bot.add('00000000-0000-4000-8000-000000000001', '<API_TOKEN>', '<BOT_USERNAME>', '<BOT_NAME>', null, 'en');
    ~~~
@@ -73,11 +70,11 @@ All you need to do is to implement a handler function to process messages coming
    * `BOT_NAME` - Telegram bot name. Example: `Bitcoin Balance Detector`.
 
 
-6. Create a `Webhook` function in the `bot` schema:
+1. Create a `Webhook` function in the `bot` schema:
    * The function name must start with your bot username and end with `_webhook`.
 
 
-7. Create a `Heartbeat` function in the `bot` schema:
+1. Create a `Heartbeat` function in the `bot` schema:
    * The function name must start with your bot username and end with `_heartbeat`.
 
 **Link to** [Bitcoin Balance Detector](http://t.me/BitcoinBalanceDetectorBot).

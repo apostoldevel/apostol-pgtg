@@ -456,7 +456,8 @@ CREATE OR REPLACE FUNCTION bot.message (
 AS $$
 BEGIN
   INSERT INTO bot.chat (bot_id, chat_id, user_id, message_id, role, content, cost, datetime)
-  VALUES (pBotId, pChatId, pUserId, pMessageId, pRole, pContent, pCost, coalesce(pDatetime, Now()));
+  VALUES (pBotId, pChatId, pUserId, pMessageId, pRole, pContent, pCost, coalesce(pDatetime, Now()))
+  ON CONFLICT (bot_id, chat_id, message_id) DO UPDATE SET role = pRole, content = pContent, cost = pCost, datetime = coalesce(pDatetime, Now());
 END;
 $$ LANGUAGE plpgsql
   SECURITY DEFINER

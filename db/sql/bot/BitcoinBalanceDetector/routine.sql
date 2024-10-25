@@ -376,7 +376,7 @@ BEGIN
 
   IF coalesce(r.status, 0) = 200 THEN
 
-    reply := r.response::jsonb;
+    reply := convert_from(r.response, 'utf8')::jsonb;
 
     IF r.agent = 'blockchain' AND r.command = 'multiaddr' THEN
 
@@ -416,19 +416,19 @@ BEGIN
         END LOOP;
       END LOOP;
 
-      DELETE FROM http.response WHERE request = pRequest;
-      DELETE FROM http.request WHERE id = pRequest;
+      --DELETE FROM http.response WHERE request = pRequest;
+      --DELETE FROM http.request WHERE id = pRequest;
     END IF;
 
   ELSIF coalesce(r.status, 500) = 500 THEN
 
     UPDATE bot.list SET downtime = Now() + INTERVAL '1 hour';
-    PERFORM WriteToEventLog('E', r.status, coalesce(r.response, r.status_text), r.agent);
+    PERFORM WriteToEventLog('E', r.status, coalesce(convert_from(r.response, 'utf8'), r.status_text), r.agent);
 
   ELSE
 
     UPDATE bot.list SET downtime = Now() + INTERVAL '5 min';
-    PERFORM WriteToEventLog('E', r.status, coalesce(r.response, r.status_text), r.agent);
+    PERFORM WriteToEventLog('E', r.status, coalesce(convert_from(r.response, 'utf8'), r.status_text), r.agent);
 
   END IF;
 EXCEPTION
@@ -499,7 +499,7 @@ BEGIN
 
     IF r.agent = 'telegram' AND r.command = 'getFile' THEN
 
-      reply := r.response::jsonb;
+      reply := convert_from(r.response, 'utf8')::jsonb;
 
       SELECT * INTO f FROM jsonb_to_record(reply) AS x(ok bool, result jsonb);
 
@@ -516,7 +516,7 @@ BEGIN
     ELSIF r.agent = 'telegram' AND r.command = 'file_path' THEN
 
       vFileId := r.message;
-      PERFORM bot.update_file(vFileId, pdata => convert_to(r.response, 'UTF-8'));
+      PERFORM bot.update_file(vFileId, pdata => convert_to(r.response, 'utf8'));
 
       SELECT bot_id, chat_id, user_id INTO b FROM bot.file WHERE file_id = vFileId;
       PERFORM bot.context(uBotId, b.chat_id, b.user_id, '/parse', null, null, Now());
@@ -540,7 +540,7 @@ BEGIN
 
   ELSE
 
-    PERFORM WriteToEventLog('E', r.status, coalesce(r.response, r.status_text), r.agent);
+    PERFORM WriteToEventLog('E', r.status, coalesce(convert_from(r.response, 'utf8'), r.status_text), r.agent);
 
   END IF;
 EXCEPTION
